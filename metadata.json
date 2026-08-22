@@ -1,0 +1,6 @@
+{
+  "name": "FamilyGraph",
+  "description": "Genealogical record and relative-discovery system powered by Cloud SQL PostgreSQL and Firebase Authentication.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
