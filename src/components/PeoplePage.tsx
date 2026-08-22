@@ -1,107 +1,123 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.tsx';
+import { PersonRecord, TreeRecord } from '../types.ts';
+import { evaluatePersonClaims, formatAttributeLabel, getTierBadgeStyle } from '../utils/claims.ts';
+import { PersonDetailPage } from './PersonDetailPage.tsx';
+import { CreatePersonModal } from './CreatePersonModal.tsx';
+import { RelationshipCalculatorModal } from './RelationshipCalculatorModal.tsx';
 import {
   Users,
+  Plus,
   Search,
   Filter,
-  Plus,
-  Database,
-  Lock,
-  Sparkles,
-  Info,
-  Clock,
-  UserCheck,
   User,
   Calendar,
   MapPin,
   Briefcase,
-  ChevronRight,
   ShieldCheck,
-  Layers,
   Award,
+  Layers,
+  ArrowRight,
+  GitBranch,
+  Crown,
+  Edit3,
+  Eye,
+  Lock,
+  Globe,
+  Radio,
+  FileText,
+  Sparkles,
+  Compass,
+  LayoutGrid,
+  List as ListIcon,
+  FolderTree,
 } from 'lucide-react';
-import { PersonRecord } from '../types.ts';
-import { evaluatePersonClaims, getTierBadgeStyle } from '../utils/claims.ts';
-import { CreatePersonModal } from './CreatePersonModal.tsx';
-import { PersonDetailPage } from './PersonDetailPage.tsx';
-import { RelationshipCalculatorModal } from './RelationshipCalculatorModal.tsx';
-import { Compass } from 'lucide-react';
 
 interface PeoplePageProps {
   selectedPersonId?: string | null;
-  onSelectPersonId?: (id: string | null) => void;
+  onClearSelection?: () => void;
 }
 
 export const PeoplePage: React.FC<PeoplePageProps> = ({
-  selectedPersonId: propSelectedPersonId,
-  onSelectPersonId,
+  selectedPersonId,
+  onClearSelection,
 }) => {
-  const { user, dbUser, signInWithGoogle, getIdToken } = useAuth();
+  const { user, getIdToken } = useAuth();
   const [people, setPeople] = useState<PersonRecord[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [showMerged, setShowMerged] = useState<boolean>(false);
-  const [createModalOpen, setCreateModalOpen] = useState<boolean>(false);
-  const [calculatorModalOpen, setCalculatorModalOpen] = useState<boolean>(false);
+  const [trees, setTrees] = useState<TreeRecord[]>([]);
+  const [selectedTreeFilter, setSelectedTreeFilter] = useState<string>('all');
   const [activePerson, setActivePerson] = useState<PersonRecord | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchPeople = async () => {
-    if (!user) return;
-    setLoading(true);
+  // Filters & Search
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [livingFilter, setLivingFilter] = useState<'all' | 'living' | 'deceased'>('all');
+  const [ancestryFilter, setAncestryFilter] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'ledger' | 'cards'>('ledger');
+
+  // Modals
+  const [createModalOpen, setCreateModalOpen] = useState<boolean>(false);
+  const [calcModalOpen, setCalcModalOpen] = useState<boolean>(false);
+  const [calcInitialA, setCalcInitialA] = useState<string | null>(null);
+
+  const fetchPeopleAndTrees = async () => {
     try {
+      setLoading(true);
+      setError(null);
       const token = await getIdToken();
-      const url = showMerged ? '/api/people?includeMerged=true' : '/api/people';
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setPeople(data.people || []);
+      if (!token) return;
 
-        // If a person was selected, update their latest object
-        if (activePerson) {
-          const fresh = (data.people || []).find(
-            (p: PersonRecord) => p.personId === activePerson.personId
-          );
-          if (fresh) setActivePerson(fresh);
-        }
+      const [peopleRes, treesRes] = await Promise.all([
+        fetch('/api/people', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch('/api/trees', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
+      if (!peopleRes.ok) {
+        throw new Error('Failed to fetch people records');
       }
-    } catch (err) {
-      console.error('Failed to fetch people:', err);
+
+      const peopleData = await peopleRes.json();
+      setPeople(peopleData.people || []);
+
+      if (treesRes.ok) {
+        const treesData = await treesRes.json();
+        setTrees(treesData.trees || []);
+      }
+    } catch (err: any) {
+      console.error('Error loading people registry:', err);
+      setError(err.message || 'Error loading records');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPeople();
-  }, [user, showMerged]);
+    fetchPeopleAndTrees();
+  }, [user]);
 
-  // Handle prop-driven selection
+  // Sync selectedPersonId prop
   useEffect(() => {
-    if (propSelectedPersonId && people.length > 0) {
-      const found = people.find((p) => p.personId === propSelectedPersonId);
-      if (found) setActivePerson(found);
+    if (selectedPersonId && people.length > 0) {
+      const match = people.find((p) => p.personId === selectedPersonId);
+      if (match) {
+        setActivePerson(match);
+      }
     }
-  }, [propSelectedPersonId, people]);
+  }, [selectedPersonId, people]);
 
   const handleSelectPerson = (person: PersonRecord) => {
     setActivePerson(person);
-    if (onSelectPersonId) onSelectPersonId(person.personId);
   };
 
   const handleBackToList = () => {
     setActivePerson(null);
-    if (onSelectPersonId) onSelectPersonId(null);
-    fetchPeople();
-  };
-
-  const handlePersonCreated = (newPerson: PersonRecord) => {
-    setPeople((prev) => [newPerson, ...prev]);
-    setActivePerson(newPerson);
-    if (onSelectPersonId) onSelectPersonId(newPerson.personId);
+    if (onClearSelection) onClearSelection();
+    fetchPeopleAndTrees();
   };
 
   const handlePersonUpdated = (updatedPerson: PersonRecord) => {
@@ -111,323 +127,463 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
     setActivePerson(updatedPerson);
   };
 
-  // If a person is selected, show detail view
+  // Filter people
+  const filteredPeople = people.filter((person) => {
+    const evaluation = evaluatePersonClaims(person.claims || []);
+    const nameClaim = evaluation['name']?.bestClaims[0]?.value || '';
+    const birthPlace = evaluation['birth_place']?.bestClaims[0]?.value || '';
+    const occupation = evaluation['occupation']?.bestClaims[0]?.value || '';
+
+    // Search query match
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchName = nameClaim.toLowerCase().includes(q);
+      const matchPlace = birthPlace.toLowerCase().includes(q);
+      const matchOcc = occupation.toLowerCase().includes(q);
+      const matchId = person.personId.toLowerCase().includes(q);
+      if (!matchName && !matchPlace && !matchOcc && !matchId) return false;
+    }
+
+    // Living filter
+    if (livingFilter === 'living' && !person.isLiving) return false;
+    if (livingFilter === 'deceased' && person.isLiving) return false;
+
+    // Tree filter
+    if (selectedTreeFilter !== 'all' && person.treeId !== selectedTreeFilter) {
+      return false;
+    }
+
+    // Ancestry status filter
+    if (ancestryFilter !== 'all' && person.ancestryStatus !== ancestryFilter) {
+      return false;
+    }
+
+    return true;
+  });
+
   if (activePerson) {
     return (
       <PersonDetailPage
         person={activePerson}
         onBack={handleBackToList}
         onPersonUpdated={handlePersonUpdated}
-        onSelectPerson={async (targetPersonId: string) => {
-          const found = people.find((p) => p.personId === targetPersonId);
-          if (found) {
-            setActivePerson(found);
-            if (onSelectPersonId) onSelectPersonId(found.personId);
-          } else {
-            // Fetch fresh
-            try {
-              const token = await getIdToken();
-              const res = await fetch(`/api/people/${targetPersonId}`, {
-                headers: { Authorization: `Bearer ${token}` },
-              });
-              if (res.ok) {
-                const data = await res.json();
-                setActivePerson(data.person);
-                if (onSelectPersonId) onSelectPersonId(data.person.personId);
-              }
-            } catch (err) {
-              console.error('Failed to load target person:', err);
-            }
-          }
+        onSelectPerson={(pid) => {
+          const target = people.find((p) => p.personId === pid);
+          if (target) setActivePerson(target);
         }}
       />
     );
   }
 
-  // Filtered list
-  const filteredPeople = people.filter((p) => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    const evalData = evaluatePersonClaims(p.claims || []);
-
-    const name = evalData['name']?.bestClaims[0]?.value?.toLowerCase() || '';
-    const birthplace = evalData['birth_place']?.bestClaims[0]?.value?.toLowerCase() || '';
-    const occupation = evalData['occupation']?.bestClaims[0]?.value?.toLowerCase() || '';
-    const birthdate = evalData['birth_date']?.bestClaims[0]?.value?.toLowerCase() || '';
-
-    return (
-      name.includes(query) ||
-      birthplace.includes(query) ||
-      occupation.includes(query) ||
-      birthdate.includes(query)
-    );
-  });
-
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-stone-950 text-stone-100 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-800">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-mono text-amber-400 mb-1">
-              <Database className="w-3.5 h-3.5" />
-              <span>PostgreSQL Core Schema</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-100 font-serif">
-              People Registry
-            </h1>
-            <p className="text-sm text-stone-400 mt-1">
-              Individual person entity nodes with sourced, multi-claim attribute assertions in PostgreSQL.
-            </p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+      {/* Art Deco Master Register Banner */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 border-b border-[#C5A059]/30 pb-7">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 text-[10px] font-mono text-[#C5A059] uppercase tracking-[0.25em]">
+            <span>❖ REGISTRY OF INDIVIDUALS</span>
+            <span className="text-[#6E675C]">•</span>
+            <span>FOLIO SERIES № 100</span>
           </div>
-
-          <div className="flex items-center gap-3">
-            {user ? (
-              <>
-                <button
-                  id="people-kinship-calc-btn"
-                  onClick={() => setCalculatorModalOpen(true)}
-                  className="inline-flex items-center gap-2 bg-stone-850 hover:bg-stone-800 text-amber-300 border border-amber-500/30 font-semibold px-4 py-2 rounded-xl text-sm transition-all shadow-sm active:scale-95"
-                >
-                  <Compass className="w-4 h-4 text-amber-400" />
-                  <span>How are they related?</span>
-                </button>
-
-                <button
-                  id="add-person-btn"
-                  onClick={() => setCreateModalOpen(true)}
-                  className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-semibold px-4 py-2 rounded-xl text-sm transition-all shadow-md active:scale-95"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Person</span>
-                </button>
-              </>
-            ) : null}
-          </div>
+          <h1 className="text-2xl sm:text-4xl font-deco font-bold text-[#F5DE98] tracking-wide">
+            The Canonical Person Registry
+          </h1>
+          <p className="text-sm text-[#E8DFD0]/80 font-reading max-w-xl">
+            Archival records compiled from multi-tier sourced historical claims with immutable provenance trails.
+          </p>
         </div>
 
-        {!user ? (
-          /* Sign-in Callout when logged out */
-          <div className="p-8 rounded-2xl bg-stone-900 border border-stone-800 text-center max-w-xl mx-auto my-12 shadow-xl">
-            <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto mb-4">
-              <Lock className="w-6 h-6" />
-            </div>
-            <h2 className="text-xl font-semibold text-stone-100 mb-2">
-              Sign In to Access Your Registry
-            </h2>
-            <p className="text-sm text-stone-400 mb-6 leading-relaxed">
-              Connect with Firebase Authentication to access your private PostgreSQL-backed
-              genealogical records, person profiles, and sourced attribute claims.
-            </p>
-            <button
-              id="people-signin-btn"
-              onClick={signInWithGoogle}
-              className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-semibold px-5 py-2.5 rounded-xl text-sm transition-all shadow-sm active:scale-95"
-            >
-              <UserCheck className="w-4 h-4" />
-              <span>Sign in with Google</span>
-            </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            id="open-kinship-calc-btn"
+            onClick={() => {
+              setCalcInitialA(null);
+              setCalcModalOpen(true);
+            }}
+            className="inline-flex items-center gap-2.5 bg-[#0D1219] hover:bg-[#131A24] text-[#F5DE98] border border-[#C5A059]/40 hover:border-[#C5A059] px-4 py-2.5 text-xs font-deco font-semibold tracking-wider transition-colors shadow-sm"
+          >
+            <Compass className="w-4 h-4 text-[#C5A059]" />
+            <span>KINSHIP CALCULATOR</span>
+          </button>
+
+          <button
+            id="create-person-btn"
+            onClick={() => setCreateModalOpen(true)}
+            className="inline-flex items-center gap-2.5 bg-gradient-to-r from-[#C5A059] via-[#E2BA6E] to-[#9E782F] hover:from-[#F5DE98] hover:to-[#C5A059] text-[#07090D] font-deco font-bold tracking-wider px-5 py-2.5 text-xs transition-all shadow-[0_0_15px_rgba(197,160,89,0.3)] active:scale-95"
+          >
+            <Plus className="w-4 h-4 text-[#07090D]" />
+            <span>ARCHIVE NEW PERSON</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Art Deco Filter and Search Chamber */}
+      <div className="bg-[#0A0E15] border border-[#C5A059]/30 p-5 space-y-4 shadow-lg deco-corner-accent">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          {/* Search box with brass border */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-[#C5A059] absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              id="search-people-input"
+              type="text"
+              placeholder="Search registry by name, birthplace, occupation, or UUID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-[#07090D] border border-[#222B38] focus:border-[#C5A059] text-xs text-[#F5DE98] placeholder:text-[#6E675C] focus:outline-none font-sans transition-colors"
+            />
           </div>
-        ) : (
-          /* Authenticated State */
-          <div className="space-y-6">
-            {/* Search bar & Controls */}
-            <div className="flex flex-col sm:flex-row gap-3 items-center">
-              <div className="relative flex-1 w-full">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500" />
-                <input
-                  id="people-search-input"
-                  type="text"
-                  placeholder="Search by name, birthplace, birth year, or occupation..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-stone-900 border border-stone-800 rounded-xl text-sm text-stone-200 placeholder-stone-500 focus:outline-none focus:border-amber-500/50 transition-colors"
-                />
-              </div>
 
-              <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                <label className="flex items-center gap-2 text-xs text-stone-400 bg-stone-900 px-3 py-2 rounded-xl border border-stone-800 cursor-pointer select-none hover:text-stone-300">
-                  <input
-                    type="checkbox"
-                    checked={showMerged}
-                    onChange={(e) => setShowMerged(e.target.checked)}
-                    className="rounded bg-stone-950 border-stone-700 text-amber-500 focus:ring-0 focus:ring-offset-0"
-                  />
-                  <span>Show Merged Duplicates</span>
-                </label>
-
-                <span className="text-xs font-mono text-stone-400 bg-stone-900 px-3 py-2.5 rounded-xl border border-stone-800">
-                  {filteredPeople.length} {filteredPeople.length === 1 ? 'person' : 'people'}
-                </span>
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="p-12 text-center text-stone-400 space-y-3">
-                <div className="w-8 h-8 rounded-full border-2 border-stone-700 border-t-amber-400 animate-spin mx-auto"></div>
-                <p className="text-sm font-mono">Querying PostgreSQL...</p>
-              </div>
-            ) : filteredPeople.length === 0 ? (
-              /* Empty State */
-              <div className="p-12 rounded-2xl bg-stone-900/50 border border-dashed border-stone-800 text-center flex flex-col items-center justify-center space-y-4">
-                <div className="w-16 h-16 rounded-2xl bg-stone-900 border border-stone-800 text-amber-400/80 flex items-center justify-center shadow-inner">
-                  <Users className="w-8 h-8" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-stone-200">
-                    {searchQuery ? 'No matching people found' : 'No People Records Yet'}
-                  </h3>
-                  <p className="text-sm text-stone-400 max-w-md mx-auto leading-relaxed mt-1">
-                    {searchQuery
-                      ? 'Try clearing your search query to see all indexed person records.'
-                      : 'Create your first person record and attach sourced attribute claims (name, birth date, birthplace, occupation).'}
-                  </p>
-                </div>
-
-                {!searchQuery && (
-                  <button
-                    id="create-first-person-btn"
-                    onClick={() => setCreateModalOpen(true)}
-                    className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-semibold px-4 py-2.5 rounded-xl text-sm transition-all shadow-md active:scale-95 mt-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Create First Person</span>
-                  </button>
-                )}
-              </div>
-            ) : (
-              /* People Grid */
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredPeople.map((p) => {
-                  const evalData = evaluatePersonClaims(p.claims || []);
-                  const bestName = evalData['name']?.bestClaims[0]?.value || 'Unnamed Person';
-                  const bestBirth = evalData['birth_date']?.bestClaims[0]?.value;
-                  const bestPlace = evalData['birth_place']?.bestClaims[0]?.value;
-                  const bestOcc = evalData['occupation']?.bestClaims[0]?.value;
-                  const totalClaims = p.claims?.length || 0;
-                  const activeClaims = p.claims?.filter((c) => c.status === 'active').length || 0;
-                  const nameTier = evalData['name']?.bestClaims[0]?.source?.reliabilityTier ?? 1;
-                  const nameTierStyle = getTierBadgeStyle(nameTier);
-
-                  return (
-                    <div
-                      key={p.personId}
-                      id={`person-card-${p.personId}`}
-                      onClick={() => handleSelectPerson(p)}
-                      className="p-5 rounded-2xl bg-stone-900 border border-stone-800/90 hover:border-amber-500/50 cursor-pointer transition-all hover:bg-stone-850 shadow-md group flex flex-col justify-between space-y-4"
-                    >
-                      <div className="space-y-3">
-                        {/* Card Header */}
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span
-                                className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${nameTierStyle.bg} ${nameTierStyle.text} ${nameTierStyle.border}`}
-                              >
-                                Tier {nameTier} Evidence
-                              </span>
-
-                              {p.isLiving ? (
-                                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/40">
-                                  Living
-                                </span>
-                              ) : (
-                                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-stone-800 text-stone-400">
-                                  Deceased
-                                </span>
-                              )}
-
-                              {p.mergedInto && (
-                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800">
-                                  Merged Record
-                                </span>
-                              )}
-                            </div>
-
-                            <h3 className="text-xl font-bold text-stone-100 group-hover:text-amber-300 transition-colors font-serif">
-                              {bestName}
-                            </h3>
-                          </div>
-
-                          <div className="p-2 rounded-xl bg-stone-950 text-stone-500 group-hover:text-amber-400 group-hover:bg-amber-500/10 transition-colors">
-                            <ChevronRight className="w-5 h-5" />
-                          </div>
-                        </div>
-
-                        {/* Attribute Badges */}
-                        <div className="space-y-1.5 text-xs text-stone-300">
-                          {bestBirth && (
-                            <div className="flex items-center gap-2 text-stone-300">
-                              <Calendar className="w-3.5 h-3.5 text-amber-400/80 shrink-0" />
-                              <span className="truncate">Born: {bestBirth}</span>
-                            </div>
-                          )}
-
-                          {bestPlace && (
-                            <div className="flex items-center gap-2 text-stone-300">
-                              <MapPin className="w-3.5 h-3.5 text-blue-400/80 shrink-0" />
-                              <span className="truncate">{bestPlace}</span>
-                            </div>
-                          )}
-
-                          {bestOcc && (
-                            <div className="flex items-center gap-2 text-stone-300">
-                              <Briefcase className="w-3.5 h-3.5 text-purple-400/80 shrink-0" />
-                              <span className="truncate">{bestOcc}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Card Footer Info */}
-                      <div className="pt-3 border-t border-stone-800/60 flex items-center justify-between text-[11px] font-mono text-stone-400">
-                        <div className="flex items-center gap-2">
-                          <Layers className="w-3.5 h-3.5 text-amber-400" />
-                          <span>{totalClaims} claim{totalClaims > 1 ? 's' : ''} ({activeClaims} active)</span>
-                        </div>
-
-                        <span className="text-stone-500">ID: {p.personId.slice(0, 8)}...</span>
-                      </div>
-                    </div>
-                  );
-                })}
+          {/* Filter options */}
+          <div className="flex flex-wrap items-center gap-2.5 text-xs">
+            {/* Tree Selector */}
+            {trees.length > 0 && (
+              <div className="flex items-center gap-1.5 bg-[#07090D] border border-[#222B38] px-3 py-1.5">
+                <FolderTree className="w-3.5 h-3.5 text-[#C5A059]" />
+                <select
+                  value={selectedTreeFilter}
+                  onChange={(e) => setSelectedTreeFilter(e.target.value)}
+                  className="bg-transparent text-[#F5DE98] focus:outline-none cursor-pointer text-xs pr-1 font-deco"
+                >
+                  <option value="all" className="bg-[#0D1219]">All Trees ({trees.length})</option>
+                  {trees.map((t) => (
+                    <option key={t.treeId} value={t.treeId} className="bg-[#0D1219]">
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
 
-            {/* Architecture Explanatory Box */}
-            <div className="p-5 rounded-xl bg-stone-900 border border-stone-800/80">
-              <div className="flex items-center gap-2 text-xs font-semibold text-stone-300 uppercase tracking-wider mb-2">
-                <Info className="w-4 h-4 text-amber-400" />
-                <span>Sourced Relational Architecture</span>
-              </div>
-              <p className="text-xs text-stone-400 leading-relaxed">
-                Click any person card above to inspect their profile. In accordance with strict genealogy standards, all attributes are computed from individual claim assertions and their respective source reliability ratings.
-              </p>
+            {/* Vitality Status */}
+            <div className="flex items-center gap-1.5 bg-[#07090D] border border-[#222B38] px-3 py-1.5">
+              <span className="text-[#A89F91] font-mono text-[11px]">Vitality:</span>
+              <select
+                value={livingFilter}
+                onChange={(e) => setLivingFilter(e.target.value as any)}
+                className="bg-transparent text-[#F5DE98] focus:outline-none cursor-pointer text-xs pr-1 font-sans"
+              >
+                <option value="all" className="bg-[#0D1219]">All Records</option>
+                <option value="living" className="bg-[#0D1219]">Living Only</option>
+                <option value="deceased" className="bg-[#0D1219]">Deceased Only</option>
+              </select>
+            </div>
+
+            {/* Lineage Role */}
+            <div className="flex items-center gap-1.5 bg-[#07090D] border border-[#222B38] px-3 py-1.5">
+              <span className="text-[#A89F91] font-mono text-[11px]">Lineage:</span>
+              <select
+                value={ancestryFilter}
+                onChange={(e) => setAncestryFilter(e.target.value)}
+                className="bg-transparent text-[#F5DE98] focus:outline-none cursor-pointer text-xs pr-1 font-sans"
+              >
+                <option value="all" className="bg-[#0D1219]">All Lineages</option>
+                <option value="direct_ancestor" className="bg-[#0D1219]">Direct Ancestors</option>
+                <option value="collateral" className="bg-[#0D1219]">Collateral Lines</option>
+                <option value="in_law" className="bg-[#0D1219]">In-laws & Spouses</option>
+              </select>
+            </div>
+
+            {/* View Mode Toggle */}
+            <div className="flex items-center border border-[#222B38] bg-[#07090D] p-0.5">
+              <button
+                onClick={() => setViewMode('ledger')}
+                title="Ledger Table View"
+                className={`p-1.5 transition-colors ${
+                  viewMode === 'ledger'
+                    ? 'bg-[#131A24] text-[#F5DE98] border border-[#C5A059]/40'
+                    : 'text-[#6E675C] hover:text-[#E8DFD0]'
+                }`}
+              >
+                <ListIcon className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode('cards')}
+                title="Archival Dossier Cards"
+                className={`p-1.5 transition-colors ${
+                  viewMode === 'cards'
+                    ? 'bg-[#131A24] text-[#F5DE98] border border-[#C5A059]/40'
+                    : 'text-[#6E675C] hover:text-[#E8DFD0]'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
-        )}
+        </div>
+
+        {/* Active Filter Metrics */}
+        <div className="flex items-center justify-between text-[10px] text-[#A89F91] font-mono pt-2 border-t border-[#222B38]">
+          <span>
+            RECORD ENTRIES INDEXED: <strong className="text-[#F5DE98]">{filteredPeople.length}</strong> of{' '}
+            {people.length}
+          </span>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-[#C5A059] hover:underline"
+            >
+              Clear search filter
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Create Person Modal */}
+      {/* Main Records Presentation */}
+      {loading ? (
+        <div className="py-28 text-center space-y-4">
+          <div className="w-10 h-10 border-2 border-[#222B38] border-t-[#C5A059] animate-spin mx-auto"></div>
+          <p className="text-xs font-mono tracking-widest text-[#A89F91] uppercase">Retrieving Vault Registry from Cloud SQL...</p>
+        </div>
+      ) : error ? (
+        <div className="p-5 border border-[#5E1D31] bg-[#240B13] text-[#F5DE98] text-xs font-mono">
+          {error}
+        </div>
+      ) : filteredPeople.length === 0 ? (
+        <div className="py-20 text-center border border-[#222B38] p-10 bg-[#0A0E15] space-y-4 deco-corner-accent">
+          <FileText className="w-12 h-12 text-[#6E675C] mx-auto mb-2" />
+          <h3 className="text-lg font-deco font-bold text-[#F5DE98]">
+            No Archival Records Match Criteria
+          </h3>
+          <p className="text-xs text-[#A89F91] max-w-md mx-auto font-reading">
+            Adjust search criteria or archive a new historical soul into the repository ledger.
+          </p>
+          <button
+            onClick={() => setCreateModalOpen(true)}
+            className="mt-4 inline-flex items-center gap-2 bg-[#C5A059] text-[#07090D] font-deco font-bold px-5 py-2 text-xs transition-all shadow-md"
+          >
+            <Plus className="w-4 h-4 text-[#07090D]" />
+            <span>ARCHIVE RECORD</span>
+          </button>
+        </div>
+      ) : viewMode === 'ledger' ? (
+        /* Institutional Art Deco Ledger Table View */
+        <div className="border border-[#C5A059]/30 bg-[#0A0E15] overflow-hidden shadow-xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-[#07090D] border-b border-[#C5A059]/30 text-[#C5A059] font-deco uppercase text-[10px] tracking-[0.15em]">
+                  <th className="py-4 px-5">FOLIO IDENTIFIER</th>
+                  <th className="py-4 px-5">ASSERTED NAME</th>
+                  <th className="py-4 px-5">BIRTH RECORD</th>
+                  <th className="py-4 px-5">LOCATION / BIRTHPLACE</th>
+                  <th className="py-4 px-5">VITALITY & LINEAGE</th>
+                  <th className="py-4 px-5">EVIDENCE TIER</th>
+                  <th className="py-4 px-5 text-right">ACTION</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#222B38]">
+                {filteredPeople.map((person, idx) => {
+                  const evaluation = evaluatePersonClaims(person.claims || []);
+                  const nameEval = evaluation['name'];
+                  const birthDateEval = evaluation['birth_date'];
+                  const birthPlaceEval = evaluation['birth_place'];
+
+                  const displayName = nameEval?.bestClaims[0]?.value || 'Unnamed Individual';
+                  const birthDate = birthDateEval?.bestClaims[0]?.value || '—';
+                  const birthPlace = birthPlaceEval?.bestClaims[0]?.value || '—';
+                  const bestTier = nameEval?.bestClaims[0]?.source?.reliabilityTier || 3;
+
+                  const recordFolio = `REC-${String(idx + 1).padStart(4, '0')}`;
+
+                  return (
+                    <tr
+                      key={person.personId}
+                      onClick={() => handleSelectPerson(person)}
+                      className="hover:bg-[#131A24] cursor-pointer transition-all group"
+                    >
+                      {/* Record Folio & UUID */}
+                      <td className="py-4 px-5 font-mono">
+                        <div className="text-xs text-[#F5DE98] font-bold">
+                          {recordFolio}
+                        </div>
+                        <div className="text-[9px] text-[#6E675C] tracking-wider">
+                          {person.personId.slice(0, 8)}...
+                        </div>
+                      </td>
+
+                      {/* Display Name */}
+                      <td className="py-4 px-5">
+                        <div className="font-deco font-bold text-sm text-[#F5DE98] group-hover:text-[#FFF0C2] transition-colors">
+                          {displayName}
+                        </div>
+                        {nameEval?.hasTies && (
+                          <div className="text-[10px] text-[#D9658B] font-mono flex items-center gap-1 mt-0.5">
+                            <span>⚠ Competing Claims ({nameEval.activeClaims.length})</span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Birth Date */}
+                      <td className="py-4 px-5 text-[#E8DFD0] font-sans">
+                        {birthDate}
+                      </td>
+
+                      {/* Birthplace */}
+                      <td className="py-4 px-5 text-[#A89F91] max-w-[200px] truncate font-reading">
+                        {birthPlace}
+                      </td>
+
+                      {/* Vitality & Lineage Status */}
+                      <td className="py-4 px-5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {person.isLiving ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-mono border border-[#1D5C4A] bg-[#0B221B] text-[#52B395]">
+                              <span className="w-1.5 h-1.5 bg-[#52B395] rounded-full"></span>
+                              LIVING
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-mono border border-[#222B38] bg-[#07090D] text-[#A89F91]">
+                              DECEASED
+                            </span>
+                          )}
+
+                          {person.ancestryStatus === 'direct_ancestor' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-mono border border-[#C5A059]/40 bg-[#0D1219] text-[#F5DE98]">
+                              DIRECT ANCESTOR
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Provenance Tier */}
+                      <td className="py-4 px-5">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-mono text-[#A89F91]">
+                          <Award className="w-3.5 h-3.5 text-[#C5A059]" />
+                          Tier {bestTier}/5
+                        </span>
+                      </td>
+
+                      {/* Action */}
+                      <td className="py-4 px-5 text-right">
+                        <span className="inline-flex items-center gap-1.5 text-xs text-[#C5A059] font-deco font-semibold tracking-wider group-hover:translate-x-1 transition-transform">
+                          <span>INSPECT</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* Archival Dossier Cards Grid */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredPeople.map((person, idx) => {
+            const evaluation = evaluatePersonClaims(person.claims || []);
+            const nameEval = evaluation['name'];
+            const birthDateEval = evaluation['birth_date'];
+            const birthPlaceEval = evaluation['birth_place'];
+            const occEval = evaluation['occupation'];
+
+            const displayName = nameEval?.bestClaims[0]?.value || 'Unnamed Individual';
+            const birthDate = birthDateEval?.bestClaims[0]?.value || 'Date unrecorded';
+            const birthPlace = birthPlaceEval?.bestClaims[0]?.value || 'Place unrecorded';
+            const occupation = occEval?.bestClaims[0]?.value || null;
+            const recordFolio = `REC-${String(idx + 1).padStart(4, '0')}`;
+
+            return (
+              <div
+                key={person.personId}
+                onClick={() => handleSelectPerson(person)}
+                className="group cursor-pointer bg-[#0A0E15] border border-[#222B38] hover:border-[#C5A059] p-6 space-y-5 transition-all shadow-md relative flex flex-col justify-between deco-corner-accent hover:-translate-y-1"
+              >
+                <div>
+                  {/* Top Stamped Folio Bar */}
+                  <div className="flex items-center justify-between pb-3 border-b border-[#222B38]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] font-mono text-[#F5DE98] font-bold bg-[#07090D] px-2 py-0.5 border border-[#C5A059]/40">
+                        {recordFolio}
+                      </span>
+                      <span className="text-[9px] font-mono text-[#6E675C]">
+                        #{person.personId.slice(0, 8)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {person.isLiving ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-mono border border-[#1D5C4A] bg-[#0B221B] text-[#52B395]">
+                          LIVING
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-mono border border-[#222B38] bg-[#07090D] text-[#A89F91]">
+                          DECEASED
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Header Title */}
+                  <div className="mt-4 space-y-1">
+                    <h3 className="text-base font-deco font-bold text-[#F5DE98] group-hover:text-[#FFF0C2] transition-colors leading-tight">
+                      {displayName}
+                    </h3>
+                    {person.ancestryStatus === 'direct_ancestor' && (
+                      <div className="text-[10px] text-[#C5A059] font-mono uppercase tracking-wider">
+                        ✦ Direct Ancestor Line
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Primary Attributes Ledger */}
+                  <div className="mt-4 space-y-2.5 text-xs text-[#A89F91]">
+                    <div className="flex items-start gap-2.5">
+                      <Calendar className="w-3.5 h-3.5 text-[#C5A059] shrink-0 mt-0.5" />
+                      <span className="text-[#E8DFD0]">{birthDate}</span>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <MapPin className="w-3.5 h-3.5 text-[#C5A059] shrink-0 mt-0.5" />
+                      <span className="truncate font-reading">{birthPlace}</span>
+                    </div>
+                    {occupation && (
+                      <div className="flex items-start gap-2.5">
+                        <Briefcase className="w-3.5 h-3.5 text-[#C5A059] shrink-0 mt-0.5" />
+                        <span className="truncate font-reading">{occupation}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Card Footer */}
+                <div className="pt-4 border-t border-[#222B38] flex items-center justify-between text-xs">
+                  <span className="text-[10px] font-mono text-[#6E675C]">
+                    {person.claims?.length || 0} claims sourced
+                  </span>
+                  <span className="text-xs font-deco font-semibold text-[#C5A059] flex items-center gap-1.5 group-hover:translate-x-1 transition-transform tracking-wider">
+                    <span>DOSSIER</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Modals */}
       {createModalOpen && (
         <CreatePersonModal
           isOpen={createModalOpen}
           onClose={() => setCreateModalOpen(false)}
-          onPersonCreated={handlePersonCreated}
+          onPersonCreated={(newPerson) => {
+            setPeople((prev) => [newPerson, ...prev]);
+            setActivePerson(newPerson);
+          }}
           getIdToken={getIdToken}
         />
       )}
 
-      {/* Relationship Calculator Modal */}
-      {calculatorModalOpen && (
+      {calcModalOpen && (
         <RelationshipCalculatorModal
-          isOpen={calculatorModalOpen}
-          onClose={() => setCalculatorModalOpen(false)}
-          onSelectPerson={(personId) => {
-            setCalculatorModalOpen(false);
-            const found = people.find((p) => p.personId === personId);
-            if (found) {
-              setActivePerson(found);
+          isOpen={calcModalOpen}
+          onClose={() => setCalcModalOpen(false)}
+          initialPersonAId={calcInitialA}
+          onSelectPerson={(pid) => {
+            const target = people.find((p) => p.personId === pid);
+            if (target) {
+              setCalcModalOpen(false);
+              setActivePerson(target);
             }
           }}
         />
@@ -435,3 +591,4 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
     </div>
   );
 };
+

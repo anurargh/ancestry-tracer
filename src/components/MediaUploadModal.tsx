@@ -1,12 +1,14 @@
-import React, { useState, useRef } from 'react';
-import { X, Upload, FileText, Image as ImageIcon, CheckCircle2, ShieldCheck, AlertCircle } from 'lucide-react';
-import { MediaType, PersonMediaRecord } from '../types.ts';
+import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext.tsx';
+import { X, Upload, ShieldCheck, FileText, Image as ImageIcon, AlertCircle, Scroll } from 'lucide-react';
+import { motion } from 'motion/react';
+import { MediaType } from '../types.ts';
 
 interface MediaUploadModalProps {
   personId: string;
   personName: string;
   onClose: () => void;
-  onMediaUploaded: (media: PersonMediaRecord) => void;
+  onMediaUploaded: () => void;
 }
 
 export const MediaUploadModal: React.FC<MediaUploadModalProps> = ({
@@ -15,321 +17,273 @@ export const MediaUploadModal: React.FC<MediaUploadModalProps> = ({
   onClose,
   onMediaUploaded,
 }) => {
+  const { getAuthHeaders } = useAuth();
   const [title, setTitle] = useState('');
-  const [mediaType, setMediaType] = useState<MediaType>('photo');
   const [description, setDescription] = useState('');
-  const [fileDataUrl, setFileDataUrl] = useState<string | null>(null);
-  const [mimeType, setMimeType] = useState<string | null>(null);
-  const [fileSize, setFileSize] = useState<number | null>(null);
-  const [fileName, setFileName] = useState<string>('');
-  const [sha256Checksum, setSha256Checksum] = useState<string>('');
-  const [isHashing, setIsHashing] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const [mediaType, setMediaType] = useState<MediaType>('certificate');
+  const [fileUrl, setFileUrl] = useState('');
+  const [isUrlMode, setIsUrlMode] = useState(false);
+  const [fileData, setFileData] = useState<{
+    base64: string;
+    mimeType: string;
+    size: number;
+    checksum: string;
+  } | null>(null);
+
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Compute SHA-256 in browser using Web Crypto API
-  const calculateSha256 = async (arrayBuffer: ArrayBuffer): Promise<string> => {
-    const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-  };
-
-  const handleFileSelect = async (file: File) => {
-    setError(null);
+  // Compute SHA-256 Checksum using browser Web Crypto API
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 20 * 1024 * 1024) {
-      setError('File is too large. Please select a file under 20MB.');
-      return;
-    }
-
-    setFileName(file.name);
-    setMimeType(file.type || 'application/octet-stream');
-    setFileSize(file.size);
-    if (!title) {
-      // Auto-populate title from clean filename
-      const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
-      setTitle(cleanName.charAt(0).toUpperCase() + cleanName.slice(1));
-    }
-
-    // Guess media type from mime
-    if (file.type.startsWith('image/')) {
-      setMediaType('photo');
-    } else if (file.name.toLowerCase().includes('census')) {
-      setMediaType('census_record');
-    } else if (file.name.toLowerCase().includes('cert')) {
-      setMediaType('certificate');
-    } else {
-      setMediaType('document');
-    }
-
-    setIsHashing(true);
     try {
+      setLoading(true);
+      setError(null);
+
       const arrayBuffer = await file.arrayBuffer();
-      const checksum = await calculateSha256(arrayBuffer);
-      setSha256Checksum(checksum);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setFileDataUrl(e.target?.result as string);
-        setIsHashing(false);
+      reader.onload = () => {
+        setFileData({
+          base64: reader.result as string,
+          mimeType: file.type || 'application/octet-stream',
+          size: file.size,
+          checksum: hashHex,
+        });
+        if (!title) {
+          setTitle(file.name.replace(/\.[^/.]+$/, ''));
+        }
+        setLoading(false);
       };
       reader.readAsDataURL(file);
     } catch (err: any) {
-      console.error('Error processing file:', err);
-      setError('Failed to calculate SHA-256 hash or read file.');
-      setIsHashing(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileSelect(e.dataTransfer.files[0]);
+      console.error('File hashing error:', err);
+      setError('Failed to compute cryptographic SHA-256 fingerprint.');
+      setLoading(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fileDataUrl || !sha256Checksum) {
-      setError('Please select a file to upload.');
-      return;
-    }
     if (!title.trim()) {
-      setError('Please enter a descriptive title for this document.');
+      setError('Please provide a document title for the archival register.');
       return;
     }
 
-    setIsUploading(true);
+    if (!isUrlMode && !fileData) {
+      setError('Please select an archival file or switch to direct URL accession.');
+      return;
+    }
+
+    if (isUrlMode && !fileUrl.trim()) {
+      setError('Please enter a valid document file URL.');
+      return;
+    }
+
+    setLoading(true);
     setError(null);
 
     try {
-      const token = localStorage.getItem('familygraph_token') || 'demo_token';
+      const headers = await getAuthHeaders();
+
+      let targetUrl = fileUrl;
+      let checksum = fileData?.checksum || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+      let mime = fileData?.mimeType || 'application/pdf';
+      let size = fileData?.size || 0;
+
+      if (!isUrlMode && fileData) {
+        targetUrl = fileData.base64;
+      }
+
       const res = await fetch(`/api/people/${personId}/media`, {
         method: 'POST',
         headers: {
+          ...headers,
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           title: title.trim(),
-          mediaType,
-          mimeType,
-          fileSize,
-          fileUrl: fileDataUrl,
-          sha256Checksum,
           description: description.trim() || undefined,
+          mediaType,
+          fileUrl: targetUrl,
+          sha256Checksum: checksum,
+          mimeType: mime,
+          fileSize: size,
         }),
       });
 
-      const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to upload media');
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to accession archival document');
       }
 
-      onMediaUploaded(data.media);
+      onMediaUploaded();
       onClose();
     } catch (err: any) {
-      console.error('Error uploading media:', err);
-      setError(err.message || 'Failed to attach media document.');
+      console.error('Failed to attach document:', err);
+      setError(err.message || 'Error accessioning document into vault');
     } finally {
-      setIsUploading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div id="media_upload_modal" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto font-sans">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="deco-card bg-[#15191E] border-2 border-[#D4AF37] rounded-sm w-full max-w-xl max-h-[90vh] flex flex-col shadow-[0_10px_40px_rgba(0,0,0,0.8)] my-8"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/50">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-[#D4AF37]/30 bg-[#120F0B]">
           <div>
-            <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-              <Upload className="w-5 h-5 text-indigo-400" />
-              Attach Document / Photo
-            </h3>
-            <p className="text-xs text-slate-400">For {personName}</p>
+            <div className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-[0.2em] flex items-center gap-1.5">
+              <Scroll className="w-3.5 h-3.5" />
+              <span>PRIMARY SOURCE PROVENANCE ARCHIVE</span>
+            </div>
+            <h2 className="text-xl font-display font-bold text-[#F4EDE2] mt-0.5 uppercase tracking-wide">
+              Accession Document for {personName}
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-sm text-[#8C8275] hover:text-[#F4EDE2] hover:bg-[#1A1F26] transition-colors border border-transparent hover:border-[#D4AF37]/40"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Content Form */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4">
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5 flex-1 text-xs font-sans">
           {error && (
-            <div className="p-3 bg-red-950/60 border border-red-800/60 rounded-xl text-red-300 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Drag and Drop Zone */}
-          {!fileDataUrl ? (
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setIsDragging(true);
-              }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-                isDragging
-                  ? 'border-indigo-500 bg-indigo-950/20'
-                  : 'border-slate-700 hover:border-slate-600 bg-slate-950/40 hover:bg-slate-950/70'
-              }`}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept="image/*,application/pdf,text/plain"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    handleFileSelect(e.target.files[0]);
-                  }
-                }}
-              />
-              <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-800/80 flex items-center justify-center text-slate-400">
-                <Upload className="w-6 h-6 text-indigo-400" />
-              </div>
-              <p className="text-sm font-medium text-slate-200">
-                Click or drag & drop a file here
-              </p>
-              <p className="text-xs text-slate-400 mt-1">
-                Supports photos, certificates, census scans, and PDFs (up to 20MB)
-              </p>
-            </div>
-          ) : (
-            <div className="p-4 bg-slate-950/60 border border-slate-800 rounded-xl space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {mimeType?.startsWith('image/') ? (
-                    <img
-                      src={fileDataUrl}
-                      alt="Preview"
-                      className="w-12 h-12 object-cover rounded-lg border border-slate-700"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-lg bg-indigo-950/80 border border-indigo-800/50 flex items-center justify-center text-indigo-300">
-                      <FileText className="w-6 h-6" />
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm font-medium text-slate-200 truncate max-w-[220px]">
-                      {fileName}
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      {fileSize ? `${(fileSize / 1024).toFixed(1)} KB` : ''} • {mimeType}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFileDataUrl(null);
-                    setSha256Checksum('');
-                  }}
-                  className="text-xs text-rose-400 hover:text-rose-300 bg-rose-950/40 px-2 py-1 rounded-lg border border-rose-900/40"
-                >
-                  Change
-                </button>
-              </div>
-
-              {/* SHA-256 Provenance Checksum Box */}
-              <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400 flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    SHA-256 Provenance Checksum:
-                  </span>
-                  {isHashing ? (
-                    <span className="text-amber-400">Computing...</span>
-                  ) : (
-                    <span className="text-emerald-400 font-medium flex items-center gap-0.5">
-                      <CheckCircle2 className="w-3 h-3" /> Verified
-                    </span>
-                  )}
-                </div>
-                <p className="font-mono text-[11px] text-slate-300 break-all leading-tight">
-                  {sha256Checksum || 'Calculating hash...'}
-                </p>
-              </div>
+            <div className="p-3.5 rounded-sm border border-[#9C4A3C]/60 bg-[#2A1513] text-[#EBB4AC] font-serif">
+              {error}
             </div>
           )}
 
           {/* Title */}
-          <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">
-              Document Title *
-            </label>
+          <div className="space-y-1.5">
+            <label className="text-[#C4B59D] font-display uppercase tracking-wider text-[11px] font-medium">Document Title / Accession Label</label>
             <input
               type="text"
               required
+              placeholder="e.g., Parish Marriage Register 1888, Folio 42"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., 1900 Federal Census Schedule, Marriage Certificate"
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              className="w-full px-3.5 py-2.5 bg-[#101317] border border-[#D4AF37]/30 rounded-sm text-[#F4EDE2] focus:outline-none focus:border-[#D4AF37] font-display text-sm font-semibold"
             />
           </div>
 
-          {/* Media Type */}
-          <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">
-              Document / Media Classification
-            </label>
+          {/* Media Archetype */}
+          <div className="space-y-1.5">
+            <label className="text-[#C4B59D] font-display uppercase tracking-wider text-[11px] font-medium">Document Archetype</label>
             <select
               value={mediaType}
               onChange={(e) => setMediaType(e.target.value as MediaType)}
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+              className="w-full px-3.5 py-2.5 bg-[#101317] border border-[#D4AF37]/30 rounded-sm text-[#F4EDE2] focus:outline-none focus:border-[#D4AF37] cursor-pointer font-sans"
             >
-              <option value="photo">Photograph / Portrait</option>
-              <option value="certificate">Official Certificate (Birth/Marriage/Death)</option>
-              <option value="census_record">Census Schedule / Population Census</option>
-              <option value="document">Archival Document / Deed / Will</option>
-              <option value="other">Other Genealogical Record</option>
+              <option value="certificate" className="bg-[#15191E]">Official Vital Certificate (Birth, Marriage, Death)</option>
+              <option value="census_record" className="bg-[#15191E]">Federal / National Census Schedule</option>
+              <option value="photo" className="bg-[#15191E]">Historical Photograph / Daguerreotype</option>
+              <option value="document" className="bg-[#15191E]">Probate, Testamentary Will, Military or Land Deed</option>
             </select>
           </div>
 
-          {/* Description */}
-          <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">
-              Historical Notes / Transcription (Optional)
-            </label>
+          {/* File Upload Mode Toggle */}
+          <div className="flex items-center justify-between text-xs pt-1">
+            <span className="text-[#8C8275] font-mono text-[11px] uppercase">Accession Method:</span>
+            <button
+              type="button"
+              onClick={() => setIsUrlMode(!isUrlMode)}
+              className="text-[#D4AF37] hover:underline font-mono text-[11px] uppercase tracking-wider"
+            >
+              {isUrlMode ? 'Switch to Local Archival File Upload' : 'Switch to Direct Document URL'}
+            </button>
+          </div>
+
+          {/* Upload Drop Zone / Input */}
+          {!isUrlMode ? (
+            <div className="space-y-2">
+              <label className="block p-6 border-2 border-dashed border-[#D4AF37]/40 hover:border-[#D4AF37] rounded-sm cursor-pointer text-center bg-[#101317] transition-all group">
+                <input
+                  type="file"
+                  onChange={handleFileSelect}
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                />
+                <Upload className="w-8 h-8 mx-auto mb-2 text-[#D4AF37] group-hover:scale-110 transition-transform" />
+                <div className="font-display font-bold text-xs uppercase tracking-wider text-[#F4EDE2]">
+                  {fileData ? 'Archival File Loaded & Cryptographically Fingerprinted' : 'Click or Drag to Accession Primary Document'}
+                </div>
+                <div className="text-[10px] text-[#8C8275] mt-1 font-mono">
+                  PNG, JPG, TIFF, or PDF (Web Crypto SHA-256 Calculated On-Client)
+                </div>
+              </label>
+
+              {fileData && (
+                <div className="p-3.5 bg-[#120F0B] border border-[#D4AF37]/30 rounded-sm space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] font-mono text-[#85C49F]">
+                    <span className="flex items-center gap-1 font-bold">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      SHA-256 FINGERPRINT CALCULATED
+                    </span>
+                    <span className="text-[#C4B59D]">{Math.round(fileData.size / 1024)} KB</span>
+                  </div>
+                  <div className="text-[10px] font-mono text-[#D4AF37] break-all bg-[#101317] p-2 rounded-sm border border-[#2B333C]">
+                    {fileData.checksum}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <label className="text-[#C4B59D] font-display uppercase tracking-wider text-[11px] font-medium">Archival Document URL</label>
+              <input
+                type="url"
+                placeholder="https://nationalarchives.gov/records/folio-192.pdf"
+                value={fileUrl}
+                onChange={(e) => setFileUrl(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-[#101317] border border-[#D4AF37]/30 rounded-sm text-[#F4EDE2] focus:outline-none focus:border-[#D4AF37] font-mono"
+              />
+            </div>
+          )}
+
+          {/* Archival Description / Annotation */}
+          <div className="space-y-1.5">
+            <label className="text-[#C4B59D] font-display uppercase tracking-wider text-[11px] font-medium">Archival Annotation / Physical Notes</label>
             <textarea
               rows={2}
+              placeholder="Notes on official stamps, condition, signatures, repository box number..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g., Original parchment document preserved at County Archives, shows address at 44 Elm St."
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              className="w-full px-3.5 py-2 bg-[#101317] border border-[#D4AF37]/30 rounded-sm text-[#F4EDE2] focus:outline-none focus:border-[#D4AF37]"
             />
           </div>
 
-          {/* Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-2">
+          {/* Footer Actions */}
+          <div className="flex items-center justify-end gap-3 pt-5 border-t border-[#D4AF37]/20">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-slate-300 hover:text-slate-100 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors"
+              className="px-4 py-2 text-[#A69B8D] hover:text-[#F4EDE2] font-display uppercase text-xs"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={isUploading || isHashing || !fileDataUrl || !title.trim()}
-              className="px-4 py-2 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-colors flex items-center gap-1.5 shadow-lg shadow-indigo-900/30"
+              disabled={loading}
+              className="px-6 py-2.5 bg-gradient-to-b from-[#E6CA65] to-[#B88728] text-[#120F0B] font-display font-bold uppercase text-xs rounded-sm shadow-md transition-all active:scale-95 border border-[#F3E5AB]"
             >
-              {isUploading ? 'Uploading...' : 'Save & Attach'}
+              {loading ? 'Accessioning...' : 'Vault Archival Document'}
             </button>
           </div>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 };

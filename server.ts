@@ -647,26 +647,29 @@ async function startServer() {
   });
 
   // ==========================================
+  // ==========================================
   // Duplicate Match Candidate Routes (Zero-Leak Discovery)
   // ==========================================
 
   // Get duplicate match candidates with zero-information-leak privacy enforcement
-  app.get('/api/duplicate-candidates', requireAuth, async (req: AuthRequest, res) => {
+  const getDuplicateCandidatesHandler = async (req: AuthRequest, res: express.Response) => {
     try {
       const uid = req.user?.uid;
       const band = req.query.band ? (req.query.band as MatchBand) : undefined;
       const status = req.query.status ? (req.query.status as MatchStatus) : undefined;
 
       const candidates = await getMatchCandidates({ band, status, requestingUid: uid });
-      res.json({ candidates, total: candidates.length });
+      res.json({ success: true, candidates, total: candidates.length });
     } catch (error: any) {
       console.error('Error fetching duplicate candidates:', error);
       res.status(500).json({ error: error.message || 'Failed to fetch duplicate candidates' });
     }
-  });
+  };
+  app.get('/api/duplicate-candidates', requireAuth, getDuplicateCandidatesHandler);
+  app.get('/api/duplicates/candidates', requireAuth, getDuplicateCandidatesHandler);
 
   // Trigger candidate scan across all persons in database
-  app.post('/api/duplicate-candidates/scan', requireAuth, async (req: AuthRequest, res) => {
+  const scanDuplicateCandidatesHandler = async (req: AuthRequest, res: express.Response) => {
     try {
       const uid = req.user?.uid;
       const result = await scanAllDuplicateCandidates();
@@ -675,6 +678,7 @@ async function startServer() {
       res.json({
         success: true,
         ...result,
+        totalPairsEvaluated: result.scanned,
         totalCandidates: candidates.length,
         pendingCount: pendingCandidates.length,
       });
@@ -682,10 +686,12 @@ async function startServer() {
       console.error('Error scanning duplicates:', error);
       res.status(500).json({ error: error.message || 'Failed to scan duplicates' });
     }
-  });
+  };
+  app.post('/api/duplicate-candidates/scan', requireAuth, scanDuplicateCandidatesHandler);
+  app.post('/api/duplicates/scan', requireAuth, scanDuplicateCandidatesHandler);
 
   // Approve duplicate candidate (Merge)
-  app.post('/api/duplicate-candidates/approve', requireAuth, async (req: AuthRequest, res) => {
+  const approveDuplicateHandler = async (req: AuthRequest, res: express.Response) => {
     try {
       const { personAId, personBId, canonicalPersonId } = req.body;
       const user = req.user;
@@ -710,10 +716,12 @@ async function startServer() {
       console.error('Error approving duplicate match:', error);
       res.status(500).json({ error: error.message || 'Failed to approve duplicate match' });
     }
-  });
+  };
+  app.post('/api/duplicate-candidates/approve', requireAuth, approveDuplicateHandler);
+  app.post('/api/duplicates/approve', requireAuth, approveDuplicateHandler);
 
-  // Reject duplicate candidate
-  app.post('/api/duplicate-candidates/reject', requireAuth, async (req: AuthRequest, res) => {
+  // Reject / Dismiss duplicate candidate
+  const rejectDuplicateHandler = async (req: AuthRequest, res: express.Response) => {
     try {
       const { personAId, personBId } = req.body;
       const user = req.user;
@@ -731,10 +739,13 @@ async function startServer() {
       console.error('Error rejecting duplicate match:', error);
       res.status(500).json({ error: error.message || 'Failed to reject duplicate match' });
     }
-  });
+  };
+  app.post('/api/duplicate-candidates/reject', requireAuth, rejectDuplicateHandler);
+  app.post('/api/duplicates/reject', requireAuth, rejectDuplicateHandler);
+  app.post('/api/duplicates/dismiss', requireAuth, rejectDuplicateHandler);
 
-  // Revert match decision (Unmerge & set status to pending)
-  app.post('/api/duplicate-candidates/revert', requireAuth, async (req: AuthRequest, res) => {
+  // Revert / Unmerge match decision (Unmerge & set status to pending)
+  const revertDuplicateHandler = async (req: AuthRequest, res: express.Response) => {
     try {
       const { personAId, personBId } = req.body;
       const user = req.user;
@@ -751,7 +762,10 @@ async function startServer() {
       console.error('Error reverting duplicate match:', error);
       res.status(500).json({ error: error.message || 'Failed to revert duplicate match' });
     }
-  });
+  };
+  app.post('/api/duplicate-candidates/revert', requireAuth, revertDuplicateHandler);
+  app.post('/api/duplicates/revert', requireAuth, revertDuplicateHandler);
+  app.post('/api/duplicates/unmerge', requireAuth, revertDuplicateHandler);
 
   // ==========================================
   // Audit Log Routes

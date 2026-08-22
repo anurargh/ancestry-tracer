@@ -21,7 +21,7 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col font-sans selection:bg-amber-500/30 selection:text-amber-200">
+      <div className="min-h-screen bg-[#10161C] text-[#EDE7DF] flex flex-col font-sans selection:bg-[#B8873F]/25 selection:text-[#F3ECDD]">
         <Header activeView={activeView} setActiveView={setActiveView} />
 
         <main className="flex-1 flex flex-col">
@@ -29,10 +29,10 @@ export default function App() {
             {activeView === 'landing' && (
               <motion.div
                 key="landing"
-                initial={{ opacity: 0, y: 6 }}
+                initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.18 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.16 }}
                 className="flex-1"
               >
                 <LandingPage setActiveView={setActiveView} />
@@ -42,10 +42,10 @@ export default function App() {
             {activeView === 'people' && (
               <motion.div
                 key="people"
-                initial={{ opacity: 0, y: 6 }}
+                initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.18 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.16 }}
                 className="flex-1"
               >
                 <PeoplePage
@@ -58,10 +58,10 @@ export default function App() {
             {activeView === 'trees' && (
               <motion.div
                 key="trees"
-                initial={{ opacity: 0, y: 6 }}
+                initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.18 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.16 }}
                 className="flex-1"
               >
                 <TreesPage onSelectPerson={handleSelectPerson} />
@@ -71,10 +71,10 @@ export default function App() {
             {activeView === 'duplicate_review' && (
               <motion.div
                 key="duplicate_review"
-                initial={{ opacity: 0, y: 6 }}
+                initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.18 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.16 }}
                 className="flex-1"
               >
                 <DuplicateReviewPage onSelectPerson={handleSelectPerson} />
@@ -84,10 +84,10 @@ export default function App() {
             {activeView === 'audit_log' && (
               <motion.div
                 key="audit_log"
-                initial={{ opacity: 0, y: 6 }}
+                initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.18 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.16 }}
                 className="flex-1"
               >
                 <AuditLogPage />
@@ -97,10 +97,10 @@ export default function App() {
             {activeView === 'about' && (
               <motion.div
                 key="about"
-                initial={{ opacity: 0, y: 6 }}
+                initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.18 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.16 }}
                 className="flex-1"
               >
                 <AboutArchitecturePage />
@@ -112,4 +112,3 @@ export default function App() {
     </AuthProvider>
   );
 }
-

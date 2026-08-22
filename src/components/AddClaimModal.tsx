@@ -6,7 +6,10 @@ import {
   ShieldAlert,
   Info,
   CheckCircle2,
+  Award,
+  Scroll,
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { formatAttributeLabel } from '../utils/claims.ts';
 
 interface AddClaimModalProps {
@@ -51,15 +54,15 @@ export const AddClaimModal: React.FC<AddClaimModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!finalAttributeType) {
-      setError('Please select or specify an attribute type.');
+      setError('Please select or specify an evidentiary attribute type.');
       return;
     }
     if (!value.trim()) {
-      setError('Please enter a claim value.');
+      setError('Please enter an evidentiary claim assertion value.');
       return;
     }
     if (!citation.trim()) {
-      setError('Please provide a source citation or document reference.');
+      setError('Please provide an archival source citation or document reference.');
       return;
     }
 
@@ -68,7 +71,7 @@ export const AddClaimModal: React.FC<AddClaimModalProps> = ({
 
     try {
       const token = await getIdToken();
-      if (!token) throw new Error('Not authenticated');
+      if (!token) throw new Error('Authentication required');
 
       const res = await fetch(`/api/people/${person.personId}/claims`, {
         method: 'POST',
@@ -89,7 +92,7 @@ export const AddClaimModal: React.FC<AddClaimModalProps> = ({
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to submit claim');
+        throw new Error(data.error || 'Failed to seal evidentiary claim');
       }
 
       const data = await res.json();
@@ -97,230 +100,198 @@ export const AddClaimModal: React.FC<AddClaimModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error('Failed to add claim:', err);
-      setError(err.message || 'An error occurred while adding the claim');
+      setError(err.message || 'An error occurred while sealing the claim assertion');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto font-sans">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="deco-card bg-[#15191E] border-2 border-[#D4AF37] rounded-sm w-full max-w-xl max-h-[90vh] flex flex-col shadow-[0_10px_40px_rgba(0,0,0,0.8)] my-8"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-800">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-[#D4AF37]/30 bg-[#120F0B]">
           <div>
-            <h2 className="text-lg font-bold text-stone-100 font-serif flex items-center gap-2">
-              <Plus className="w-5 h-5 text-amber-400" />
-              <span>Add or Replace Sourced Claim</span>
+            <div className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-[0.2em] flex items-center gap-1.5">
+              <Scroll className="w-3.5 h-3.5" />
+              <span>EVIDENTIAL ASSERTION REGISTRY</span>
+            </div>
+            <h2 className="text-xl font-display font-bold text-[#F4EDE2] mt-0.5 uppercase tracking-wide">
+              Record Sourced Claim Assertion
             </h2>
-            <p className="text-xs text-stone-400 mt-0.5">
-              Record a new attribute assertion with citation & reliability tier.
-            </p>
           </div>
           <button
             id="close-claim-modal-btn"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-stone-400 hover:text-stone-100 hover:bg-stone-800 transition-colors"
+            className="p-1.5 rounded-sm text-[#8C8275] hover:text-[#F4EDE2] hover:bg-[#1A1F26] transition-colors border border-transparent hover:border-[#D4AF37]/40"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5 flex-1">
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5 flex-1 text-xs font-sans">
           {error && (
-            <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800/60 text-rose-300 text-sm">
+            <div className="p-3.5 rounded-sm border border-[#9C4A3C]/60 bg-[#2A1513] text-[#EBB4AC] font-serif">
               {error}
             </div>
           )}
 
-          {/* Core Rule Callout: Immutable History */}
-          <div className="p-3.5 rounded-xl bg-stone-950 border border-stone-800 text-xs text-stone-300 space-y-1">
-            <div className="flex items-center gap-2 font-semibold text-amber-300">
-              <Info className="w-4 h-4" />
-              <span>Immutable Genealogy Audit Rule</span>
+          {/* Core Rule Callout */}
+          <div className="p-3.5 rounded-sm bg-[#120F0B] border border-[#D4AF37]/30 text-[#C4B59D] space-y-1">
+            <div className="flex items-center gap-2 font-display uppercase tracking-wider text-[11px] text-[#D4AF37] font-semibold">
+              <Info className="w-3.5 h-3.5" />
+              <span>Immutable Claim Provenance Guarantee</span>
             </div>
-            <p className="text-stone-400 leading-relaxed">
-              In FamilyGraph, claim records are <strong className="text-stone-200">never deleted or overwritten</strong>.
-              If replacing an existing value, the previous active claim will be marked as{' '}
-              <code className="text-amber-200 font-mono">status = 'superseded'</code> while preserving full
-              provenance in PostgreSQL.
+            <p className="text-[11px] font-serif leading-relaxed italic">
+              FamilyGraph never mutates past claims. New assertions are inserted with timestamped reliability scores, ensuring the audit ledger retains an untampered historical chronology.
             </p>
           </div>
 
           {/* Attribute Selection */}
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-400 mb-1.5">
-              Attribute Type
-            </label>
+          <div className="space-y-1.5">
+            <label className="text-[#C4B59D] font-display uppercase tracking-wider text-[11px] font-medium">Genealogical Attribute Dimension</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {['name', 'birth_date', 'birth_place', 'occupation', 'custom'].map((attr) => (
+                <button
+                  key={attr}
+                  type="button"
+                  onClick={() => setAttributeType(attr)}
+                  className={`py-2 px-2.5 rounded-sm border text-center font-mono capitalize text-xs transition-all ${
+                    attributeType === attr
+                      ? 'border-[#D4AF37] bg-gradient-to-b from-[#1C1A14] to-[#120F0B] text-[#D4AF37] font-bold shadow-sm ring-1 ring-[#D4AF37]/40'
+                      : 'border-[#2B333C] bg-[#101317] text-[#8C8275] hover:text-[#F4EDE2] hover:border-[#D4AF37]/30'
+                  }`}
+                >
+                  {formatAttributeLabel(attr)}
+                </button>
+              ))}
+            </div>
+
+            {attributeType === 'custom' && (
+              <input
+                type="text"
+                placeholder="Custom attribute (e.g., military_rank, title, religion)..."
+                value={customAttribute}
+                onChange={(e) => setCustomAttribute(e.target.value)}
+                className="w-full mt-2 px-3.5 py-2 bg-[#101317] border border-[#D4AF37]/30 rounded-sm text-[#F4EDE2] focus:outline-none focus:border-[#D4AF37]"
+              />
+            )}
+          </div>
+
+          {/* Claim Value */}
+          <div className="space-y-1.5">
+            <label className="text-[#C4B59D] font-display uppercase tracking-wider text-[11px] font-medium">Claim Assertion Value</label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. William Arthur Pendelton, 14 May 1882, Blacksmith"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-[#101317] border border-[#D4AF37]/30 rounded-sm text-[#F4EDE2] focus:outline-none focus:border-[#D4AF37] font-display text-sm font-semibold"
+            />
+          </div>
+
+          {/* Source Type & Tier Selector */}
+          <div className="space-y-1.5">
+            <label className="text-[#C4B59D] font-display uppercase tracking-wider text-[11px] font-medium">Source Document Archetype</label>
             <select
-              id="claim-attribute-select"
-              value={attributeType}
-              onChange={(e) => setAttributeType(e.target.value)}
-              className="w-full bg-stone-950 border border-stone-800 rounded-lg px-3 py-2 text-sm text-stone-100 focus:outline-none focus:border-amber-500/50"
+              value={sourceType}
+              onChange={(e) => handleSourceTypeChange(e.target.value as SourceType)}
+              className="w-full px-3.5 py-2.5 bg-[#101317] border border-[#D4AF37]/30 rounded-sm text-[#F4EDE2] focus:outline-none focus:border-[#D4AF37] cursor-pointer"
             >
-              <option value="name">Full Name (name)</option>
-              <option value="birth_date">Birth Date (birth_date)</option>
-              <option value="birth_place">Birthplace (birth_place)</option>
-              <option value="occupation">Occupation (occupation)</option>
-              <option value="death_date">Death Date (death_date)</option>
-              <option value="death_place">Place of Death (death_place)</option>
-              <option value="residence">Residence / Location (residence)</option>
-              <option value="religion">Religion / Affiliation (religion)</option>
-              <option value="custom">Other Custom Attribute...</option>
+              {Object.entries(SOURCE_TYPE_LABELS).map(([key, info]) => (
+                <option key={key} value={key} className="bg-[#15191E]">
+                  {info.label} — Tier {info.defaultTier} ({info.description})
+                </option>
+              ))}
             </select>
           </div>
 
-          {attributeType === 'custom' && (
-            <div>
-              <label className="block text-xs font-medium text-stone-300 mb-1">
-                Custom Attribute Name
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. military_rank or maiden_name"
-                value={customAttribute}
-                onChange={(e) => setCustomAttribute(e.target.value)}
-                className="w-full bg-stone-950 border border-stone-800 rounded-lg px-3 py-2 text-sm text-stone-100 placeholder-stone-600 focus:outline-none focus:border-amber-500/50"
-              />
-            </div>
-          )}
-
-          {/* Value Input */}
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-400 mb-1.5">
-              Claimed Value
-            </label>
-            <input
-              id="claim-value-input"
-              type="text"
+          {/* Citation Reference */}
+          <div className="space-y-1.5">
+            <label className="text-[#C4B59D] font-display uppercase tracking-wider text-[11px] font-medium">Citation / Archival Dossier Reference</label>
+            <textarea
+              rows={2}
               required
-              placeholder={`Enter value for ${formatAttributeLabel(finalAttributeType || 'attribute')}...`}
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              className="w-full bg-stone-950 border border-stone-800 rounded-lg px-3.5 py-2.5 text-sm text-stone-100 placeholder-stone-600 focus:outline-none focus:border-amber-500/50 font-medium"
+              placeholder="e.g. 1900 US Federal Census, District 4, Page 12B, Roll 442, Family Line 18..."
+              value={citation}
+              onChange={(e) => setCitation(e.target.value)}
+              className="w-full px-3.5 py-2 bg-[#101317] border border-[#D4AF37]/30 rounded-sm text-[#F4EDE2] focus:outline-none focus:border-[#D4AF37]"
             />
           </div>
 
-          {/* Source Details */}
-          <div className="p-4 rounded-xl bg-stone-950 border border-stone-850 space-y-3.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-stone-300">
-                Source & Evidence
-              </span>
-              <span className="text-xs font-mono text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/40">
-                Tier {reliabilityTier} Rating
-              </span>
+          {/* Reliability Tier & Confidence Sliders */}
+          <div className="grid grid-cols-2 gap-4 bg-[#101317] p-4 rounded-sm border border-[#D4AF37]/20">
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-[11px] font-mono">
+                <span className="text-[#8C8275]">Reliability Tier:</span>
+                <span className="text-[#D4AF37] font-bold">Tier {reliabilityTier}/5</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="5"
+                value={reliabilityTier}
+                onChange={(e) => setReliabilityTier(Number(e.target.value))}
+                className="w-full accent-[#D4AF37] cursor-pointer"
+              />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] text-stone-400 mb-1">Source Type</label>
-                <select
-                  id="claim-source-type-select"
-                  value={sourceType}
-                  onChange={(e) => handleSourceTypeChange(e.target.value as SourceType)}
-                  className="w-full bg-stone-900 border border-stone-800 rounded-lg px-3 py-2 text-xs text-stone-200 focus:outline-none focus:border-amber-500/50"
-                >
-                  {Object.entries(SOURCE_TYPE_LABELS).map(([k, v]) => (
-                    <option key={k} value={k}>
-                      {v.label} (Tier {v.defaultTier})
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[10px] text-stone-400 mt-1">
-                  {SOURCE_TYPE_LABELS[sourceType].description}
-                </p>
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-[11px] font-mono">
+                <span className="text-[#8C8275]">Confidence:</span>
+                <span className="text-[#85C49F] font-bold">{confidence}%</span>
               </div>
-
-              <div>
-                <label className="block text-[11px] text-stone-400 mb-1">
-                  Confidence Score: <span className="font-mono text-amber-400">{confidence}%</span>
-                </label>
-                <input
-                  id="claim-confidence-range"
-                  type="range"
-                  min="10"
-                  max="100"
-                  step="5"
-                  value={confidence}
-                  onChange={(e) => setConfidence(Number(e.target.value))}
-                  className="w-full accent-amber-500 mt-2"
-                />
-                <div className="flex justify-between text-[10px] text-stone-400 font-mono mt-1">
-                  <span>Tentative (10%)</span>
-                  <span>Definitive (100%)</span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[11px] text-stone-400 mb-1">
-                Citation & Archive Reference <span className="text-amber-400">*</span>
-              </label>
-              <textarea
-                id="claim-citation-textarea"
-                rows={2}
-                required
-                placeholder="e.g. National Archives Record Group 29, 1930 Census, Roll 1042, Page 14B"
-                value={citation}
-                onChange={(e) => setCitation(e.target.value)}
-                className="w-full bg-stone-900 border border-stone-800 rounded-lg px-3 py-2 text-xs text-stone-200 placeholder-stone-600 focus:outline-none focus:border-amber-500/50"
+              <input
+                type="range"
+                min="10"
+                max="100"
+                step="5"
+                value={confidence}
+                onChange={(e) => setConfidence(Number(e.target.value))}
+                className="w-full accent-[#4C7A5E] cursor-pointer"
               />
             </div>
           </div>
 
-          {/* Replacement / Superseding Mode */}
-          <div className="p-3.5 rounded-xl bg-stone-950 border border-stone-850 flex items-start gap-3">
+          {/* Supersede Toggle */}
+          <div className="flex items-center gap-3 p-3 bg-[#120F0B] border border-[#D4AF37]/20 rounded-sm">
             <input
-              id="supersede-checkbox"
               type="checkbox"
+              id="supersede-check"
               checked={supersedeExistingActive}
               onChange={(e) => setSupersedeExistingActive(e.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-stone-700 bg-stone-900 text-amber-500 focus:ring-amber-500"
+              className="accent-[#D4AF37] w-4 h-4 cursor-pointer"
             />
-            <label htmlFor="supersede-checkbox" className="text-xs text-stone-300 leading-relaxed cursor-pointer">
-              <span className="font-semibold text-stone-100 block">
-                Supersede previous active claim(s) for {formatAttributeLabel(finalAttributeType || 'attribute')}
-              </span>
-              <span>
-                When checked, any existing active claim for this attribute will be transitioned to{' '}
-                <code className="text-amber-300 font-mono">superseded</code> status. Uncheck if you wish to record this as an
-                explicit co-existing conflicting claim.
-              </span>
+            <label htmlFor="supersede-check" className="text-[#F4EDE2] font-serif text-xs cursor-pointer">
+              Supersede existing active assertions for this attribute dimension
             </label>
           </div>
 
-          {/* Footer Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-stone-800">
+          {/* Footer Actions */}
+          <div className="flex items-center justify-end gap-3 pt-5 border-t border-[#D4AF37]/20">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-sm text-stone-400 hover:text-stone-100 hover:bg-stone-800 transition-colors"
+              className="px-4 py-2 text-[#A69B8D] hover:text-[#F4EDE2] font-display uppercase text-xs"
             >
               Cancel
             </button>
             <button
-              id="submit-claim-btn"
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-semibold px-5 py-2 rounded-xl text-sm transition-all shadow-md active:scale-95 disabled:opacity-50"
+              className="px-6 py-2.5 bg-gradient-to-b from-[#E6CA65] to-[#B88728] text-[#120F0B] font-display font-bold uppercase text-xs rounded-sm shadow-md transition-all active:scale-95 border border-[#F3E5AB]"
             >
-              {isSubmitting ? (
-                <>
-                  <div className="w-4 h-4 rounded-full border-2 border-stone-950 border-t-transparent animate-spin"></div>
-                  <span>Inserting Claim...</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Save Sourced Claim</span>
-                </>
-              )}
+              {isSubmitting ? 'Archiving...' : 'Seal Sourced Assertion'}
             </button>
           </div>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 };

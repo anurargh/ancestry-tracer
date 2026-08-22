@@ -1,388 +1,325 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.tsx';
-import {
-  MatchCandidateRecord,
-  MatchBand,
-  MatchStatus,
-  PersonRecord,
-} from '../types.ts';
+import { MatchCandidateWithDetails, MatchCandidateBand, MatchCandidateStatus } from '../types.ts';
+import { evaluatePersonClaims } from '../utils/claims.ts';
 import {
   GitMerge,
-  CheckCircle2,
-  XCircle,
-  RotateCcw,
-  RefreshCw,
   Search,
   Filter,
-  User,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  RefreshCw,
+  ArrowRight,
+  ShieldCheck,
+  Award,
+  Sparkles,
+  Info,
   Calendar,
   MapPin,
-  Users2,
-  Sparkles,
-  AlertTriangle,
-  ArrowRight,
-  ShieldAlert,
-  ArrowUpRight,
-  HelpCircle,
+  Briefcase,
+  Users,
+  ExternalLink,
+  ChevronRight,
+  Layers,
+  FileText,
+  RotateCcw,
+  Check,
+  Scroll,
+  Binary,
+  Compass,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 
 interface DuplicateReviewPageProps {
   onSelectPerson?: (personId: string) => void;
 }
 
-export const DuplicateReviewPage: React.FC<DuplicateReviewPageProps> = ({
-  onSelectPerson,
-}) => {
+export const DuplicateReviewPage: React.FC<DuplicateReviewPageProps> = ({ onSelectPerson }) => {
   const { user, getAuthHeaders } = useAuth();
-  const [candidates, setCandidates] = useState<MatchCandidateRecord[]>([]);
+  const [candidates, setCandidates] = useState<MatchCandidateWithDetails[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [scanning, setScanning] = useState<boolean>(false);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-
-  // Filters
-  const [selectedBand, setSelectedBand] = useState<string>('all'); // 'all', 'strong', 'possible', 'unlikely'
-  const [selectedStatus, setSelectedStatus] = useState<string>('pending'); // 'pending', 'approved', 'rejected', 'all'
+  const [selectedBand, setSelectedBand] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('pending');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Selected canonical person per candidate pair (key: `${personAId}_${personBId}` -> personId)
+  // Tracks canonical target selection per candidate pair
   const [canonicalSelections, setCanonicalSelections] = useState<Record<string, string>>({});
 
   const fetchCandidates = async () => {
     try {
       setLoading(true);
+      setError(null);
       const headers = await getAuthHeaders();
-
-      let url = '/api/duplicate-candidates';
-      const params = new URLSearchParams();
-      if (selectedBand !== 'all') params.append('band', selectedBand);
-      if (selectedStatus !== 'all') params.append('status', selectedStatus);
-
-      const queryString = params.toString();
-      if (queryString) url += `?${queryString}`;
-
-      const res = await fetch(url, { headers });
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to fetch duplicate candidates');
-      }
-
+      const res = await fetch('/api/duplicates/candidates', { headers });
+      if (!res.ok) throw new Error('Failed to fetch duplicate candidates');
       const data = await res.json();
       setCandidates(data.candidates || []);
+
+      // Pre-seed canonical selection to personAId
+      const initialMap: Record<string, string> = {};
+      (data.candidates || []).forEach((c: MatchCandidateWithDetails) => {
+        initialMap[`${c.personAId}_${c.personBId}`] = c.canonicalPersonId || c.personAId;
+      });
+      setCanonicalSelections(initialMap);
     } catch (err: any) {
-      console.error('Error loading candidates:', err);
-      setFeedback({ type: 'error', message: err.message || 'Failed to load duplicate candidates' });
+      console.error('Error loading duplicate candidates:', err);
+      setError(err.message || 'Failed to load duplicate candidate dossiers');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (user) {
-      fetchCandidates();
-    }
-  }, [user, selectedBand, selectedStatus]);
+    fetchCandidates();
+  }, [user]);
 
   const handleScanAll = async () => {
     try {
       setScanning(true);
-      setFeedback(null);
-      const authHeaders = await getAuthHeaders();
-
-      const res = await fetch('/api/duplicate-candidates/scan', {
+      setError(null);
+      const headers = await getAuthHeaders();
+      const res = await fetch('/api/duplicates/scan', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders,
-        },
+        headers,
       });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Scan failed');
-      }
-
-      const scanResult = await res.json();
-      setFeedback({
-        type: 'success',
-        message: `Candidate scan complete: ${scanResult.scanned || 0} individuals evaluated, ${scanResult.totalCandidates || 0} potential match candidates indexed.`,
-      });
+      if (!res.ok) throw new Error('Failed to execute phonetic duplicate scan');
+      const data = await res.json();
+      const count = data.totalPairsEvaluated ?? data.scanned ?? 0;
+      setSuccessMessage(`Heuristic Scan Complete: Evaluated ${count} candidate identity pairs with Soundex blocking & composite similarity.`);
       await fetchCandidates();
     } catch (err: any) {
-      console.error('Error scanning duplicate candidates:', err);
-      setFeedback({ type: 'error', message: err.message || 'Scan failed' });
+      console.error('Error scanning duplicates:', err);
+      setError(err.message || 'Failed to execute cross-repository duplicate scan');
     } finally {
       setScanning(false);
+      setTimeout(() => setSuccessMessage(null), 5000);
     }
   };
 
-  const handleApprove = async (candidate: MatchCandidateRecord) => {
+  const handleApprove = async (candidate: MatchCandidateWithDetails) => {
     const pairKey = `${candidate.personAId}_${candidate.personBId}`;
-    const canonicalId = canonicalSelections[pairKey] || candidate.personAId;
-
+    const canonicalPersonId = canonicalSelections[pairKey] || candidate.personAId;
     try {
       setActionLoading(pairKey);
-      setFeedback(null);
-      const authHeaders = await getAuthHeaders();
-
-      const res = await fetch('/api/duplicate-candidates/approve', {
+      setError(null);
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/duplicates/approve`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders,
-        },
+        headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           personAId: candidate.personAId,
           personBId: candidate.personBId,
-          canonicalPersonId: canonicalId,
+          canonicalPersonId,
         }),
       });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to approve duplicate match');
-      }
-
-      setFeedback({
-        type: 'success',
-        message: `Successfully merged records into canonical person "${canonicalId === candidate.personAId ? candidate.personA?.displayName : candidate.personB?.displayName}". Both original identities and audit history are safely preserved.`,
-      });
+      if (!res.ok) throw new Error('Failed to approve duplicate match');
+      const data = await res.json();
+      setSuccessMessage(
+        `Reconciliation Sealed: Secondary record marked merged_into canonical non-destructively.`
+      );
       await fetchCandidates();
     } catch (err: any) {
       console.error('Error approving match:', err);
-      setFeedback({ type: 'error', message: err.message || 'Failed to approve duplicate match' });
+      setError(err.message || 'Failed to approve duplicate match');
     } finally {
       setActionLoading(null);
+      setTimeout(() => setSuccessMessage(null), 5000);
     }
   };
 
-  const handleReject = async (candidate: MatchCandidateRecord) => {
+  const handleDismiss = async (candidate: MatchCandidateWithDetails) => {
     const pairKey = `${candidate.personAId}_${candidate.personBId}`;
-
     try {
       setActionLoading(pairKey);
-      setFeedback(null);
-      const authHeaders = await getAuthHeaders();
-
-      const res = await fetch('/api/duplicate-candidates/reject', {
+      setError(null);
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/duplicates/dismiss`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders,
-        },
+        headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           personAId: candidate.personAId,
           personBId: candidate.personBId,
         }),
       });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to reject duplicate match');
-      }
-
-      setFeedback({
-        type: 'success',
-        message: 'Match dismissed as distinct individuals.',
-      });
+      if (!res.ok) throw new Error('Failed to dismiss candidate match');
       await fetchCandidates();
+      setSuccessMessage('Match candidate dismissed to non-matching registry.');
     } catch (err: any) {
-      console.error('Error rejecting match:', err);
-      setFeedback({ type: 'error', message: err.message || 'Failed to reject duplicate match' });
+      console.error('Error dismissing match:', err);
+      setError(err.message || 'Failed to dismiss candidate match');
     } finally {
       setActionLoading(null);
+      setTimeout(() => setSuccessMessage(null), 4000);
     }
   };
 
-  const handleRevert = async (candidate: MatchCandidateRecord) => {
+  const handleUnmerge = async (candidate: MatchCandidateWithDetails) => {
     const pairKey = `${candidate.personAId}_${candidate.personBId}`;
-
     try {
       setActionLoading(pairKey);
-      setFeedback(null);
-      const authHeaders = await getAuthHeaders();
-
-      const res = await fetch('/api/duplicate-candidates/revert', {
+      setError(null);
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/duplicates/unmerge`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders,
-        },
+        headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           personAId: candidate.personAId,
           personBId: candidate.personBId,
         }),
       });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to revert match decision');
-      }
-
-      setFeedback({
-        type: 'success',
-        message: 'Match decision successfully reverted to pending state.',
-      });
+      if (!res.ok) throw new Error('Failed to unmerge duplicate record');
       await fetchCandidates();
+      setSuccessMessage('Reversion Complete: Secondary record independence restored with historical audit trail intact.');
     } catch (err: any) {
-      console.error('Error reverting match:', err);
-      setFeedback({ type: 'error', message: err.message || 'Failed to revert duplicate match' });
+      console.error('Error unmerging:', err);
+      setError(err.message || 'Failed to unmerge duplicate record');
     } finally {
       setActionLoading(null);
+      setTimeout(() => setSuccessMessage(null), 5000);
     }
   };
 
-  // Filter by search query (names)
+  // Filter candidates
   const filteredCandidates = candidates.filter((c) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
-    const nameA = c.personA?.displayName?.toLowerCase() || '';
-    const nameB = c.personB?.displayName?.toLowerCase() || '';
-    return nameA.includes(q) || nameB.includes(q);
+    if (selectedStatus !== 'all' && c.status !== selectedStatus) return false;
+    if (selectedBand !== 'all' && c.band !== selectedBand) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const nameA = (c.personA?.displayName || '').toLowerCase();
+      const nameB = (c.personB?.displayName || '').toLowerCase();
+      return nameA.includes(q) || nameB.includes(q);
+    }
+    return true;
   });
 
-  const getBandBadge = (band: MatchBand) => {
+  const getBandBadge = (band: MatchCandidateBand) => {
     switch (band) {
       case 'strong':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            Strong Match
+          <span className="text-[10px] font-mono uppercase bg-[#162A1F] text-[#85C49F] border border-[#4C7A5E] px-2.5 py-0.5 rounded-sm font-semibold tracking-wider">
+            ★ Strong Confidence (≥80)
           </span>
         );
       case 'possible':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-            Possible Match
+          <span className="text-[10px] font-mono uppercase bg-[#1A1813] text-[#D4AF37] border border-[#D4AF37]/50 px-2.5 py-0.5 rounded-sm font-semibold tracking-wider">
+            ◈ Plausible Match (50–79)
           </span>
         );
       case 'unlikely':
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-800 text-stone-400 border border-stone-700">
-            <span className="w-1.5 h-1.5 rounded-full bg-stone-500"></span>
-            Unlikely Match
+          <span className="text-[10px] font-mono uppercase bg-[#14181D] text-[#8C8275] border border-[#2B333C] px-2.5 py-0.5 rounded-sm tracking-wider">
+            ○ Marginal (&lt;50)
           </span>
         );
     }
   };
 
-  const getStatusBadge = (status: MatchStatus) => {
+  const getStatusBadge = (status: MatchCandidateStatus) => {
     switch (status) {
       case 'approved':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-medium bg-emerald-950 text-emerald-300 border border-emerald-800">
-            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-            Approved / Merged
+          <span className="text-[10px] font-mono uppercase text-[#85C49F] border border-[#4C7A5E]/60 bg-[#162A1F] px-2.5 py-0.5 rounded-sm font-medium tracking-wider">
+            ✓ Reconciled & Merged
           </span>
         );
-      case 'rejected':
+      case 'dismissed':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-medium bg-rose-950 text-rose-300 border border-rose-800">
-            <XCircle className="w-3 h-3 text-rose-400" />
-            Rejected
+          <span className="text-[10px] font-mono uppercase text-[#8C8275] border border-[#2B333C] bg-[#101317] px-2.5 py-0.5 rounded-sm tracking-wider">
+            ✕ Dismissed
           </span>
         );
       case 'pending':
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-medium bg-amber-950 text-amber-300 border border-amber-800">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-            Pending Review
+          <span className="text-[10px] font-mono uppercase text-[#D4AF37] border border-[#D4AF37]/60 bg-[#1A1813] px-2.5 py-0.5 rounded-sm font-medium tracking-wider">
+            ● Awaiting Curatorial Review
           </span>
         );
     }
   };
 
+  const pendingCount = candidates.filter((c) => c.status === 'pending').length;
+  const approvedCount = candidates.filter((c) => c.status === 'approved').length;
+  const dismissedCount = candidates.filter((c) => c.status === 'dismissed').length;
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-stone-800">
+    <div id="duplicate_review_page" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 font-sans">
+      {/* Art Deco Marquee Header */}
+      <div className="relative border-b-2 border-[#D4AF37]/30 pb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-              <GitMerge className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-stone-100 tracking-tight flex items-center gap-2.5">
-                Duplicate Review Queue
-                {candidates.length > 0 && (
-                  <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                    {candidates.filter((c) => c.status === 'pending').length} Pending
-                  </span>
-                )}
-              </h1>
-              <p className="text-xs text-stone-400 mt-0.5">
-                Heuristic blocking on Soundex(surname) + birth decade with parent/spouse resolution scoring
-              </p>
-            </div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#1A1813] border border-[#D4AF37]/40 text-[#D4AF37] text-[10px] font-mono uppercase tracking-[0.2em]">
+              <span className="w-1.5 h-1.5 bg-[#D4AF37] rotate-45"></span>
+              CROSS-RECORD RECONCILIATION & MERGE • FOLIO № 300
+            </span>
           </div>
+          <h1 className="text-3xl sm:text-4xl font-display font-bold text-[#F4EDE2] tracking-tight uppercase">
+            Duplicate Identity Resolution Chamber
+          </h1>
+          <p className="text-sm font-serif text-[#C4B59D] mt-1.5 max-w-2xl leading-relaxed italic">
+            Side-by-side comparative ledger analyzing conflicting genealogical assertions, phonetic Soundex candidate blocking, and non-destructive canonical unifications.
+          </p>
         </div>
 
-        {/* Scan Button */}
-        <div className="flex items-center gap-3">
-          <button
-            id="scan-duplicates-btn"
-            onClick={handleScanAll}
-            disabled={scanning}
-            className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-semibold px-4 py-2 rounded-xl text-sm transition-all shadow-md active:scale-95 disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${scanning ? 'animate-spin' : ''}`} />
-            <span>{scanning ? 'Scanning All Records...' : 'Scan for Duplicates'}</span>
-          </button>
-        </div>
+        <button
+          id="run_duplicate_scan_btn"
+          onClick={handleScanAll}
+          disabled={scanning}
+          className="inline-flex items-center gap-2.5 bg-gradient-to-b from-[#E6CA65] to-[#B88728] text-[#120F0B] font-display text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-sm shadow-[0_2px_12px_rgba(212,175,55,0.25)] hover:shadow-[0_4px_20px_rgba(212,175,55,0.4)] transition-all border border-[#F3E5AB] active:scale-95 shrink-0"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${scanning ? 'animate-spin' : ''}`} />
+          <span>{scanning ? 'Computing Soundex Blocks...' : 'Execute Heuristic Scan'}</span>
+        </button>
       </div>
 
-      {/* Feedback banner */}
-      <AnimatePresence>
-        {feedback && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className={`mt-4 p-3.5 rounded-xl border flex items-center justify-between text-xs font-medium ${
-              feedback.type === 'success'
-                ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60'
-                : 'bg-rose-950/40 text-rose-300 border-rose-800/60'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {feedback.type === 'success' ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              ) : (
-                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-              )}
-              <span>{feedback.message}</span>
-            </div>
-            <button
-              onClick={() => setFeedback(null)}
-              className="text-stone-400 hover:text-stone-200 ml-3 text-xs"
-            >
-              ✕
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Messages */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 rounded-sm border border-[#9C4A3C]/60 bg-[#2A1513]/90 text-[#EBB4AC] text-xs font-serif flex items-center gap-3"
+        >
+          <AlertTriangle className="w-4 h-4 text-[#9C4A3C] shrink-0" />
+          <span className="font-medium">{error}</span>
+        </motion.div>
+      )}
 
-      {/* Filter and search bar */}
-      <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-stone-900/80 p-3.5 rounded-2xl border border-stone-800">
-        {/* Status Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+      {successMessage && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 rounded-sm border border-[#4C7A5E]/60 bg-[#162A1F]/90 text-[#85C49F] text-xs font-serif flex items-center gap-3"
+        >
+          <CheckCircle2 className="w-4 h-4 text-[#4C7A5E] shrink-0" />
+          <span className="font-medium">{successMessage}</span>
+        </motion.div>
+      )}
+
+      {/* Filter and Queue Ledger Bar */}
+      <div className="deco-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#15191E] border border-[#D4AF37]/30">
+        {/* Status Navigation Tabs */}
+        <div className="flex items-center gap-1.5 bg-[#101317] p-1 rounded-sm border border-[#2B333C]">
           {[
-            { id: 'pending', label: 'Pending Review' },
-            { id: 'approved', label: 'Approved (Merged)' },
-            { id: 'rejected', label: 'Rejected' },
-            { id: 'all', label: 'All Statuses' },
+            { id: 'pending', label: `Pending Queue (${pendingCount})` },
+            { id: 'approved', label: `Reconciled (${approvedCount})` },
+            { id: 'dismissed', label: `Dismissed (${dismissedCount})` },
+            { id: 'all', label: `All Pairs (${candidates.length})` },
           ].map((tab) => (
             <button
               key={tab.id}
+              id={`tab_status_${tab.id}`}
               onClick={() => setSelectedStatus(tab.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+              className={`px-3.5 py-1.5 rounded-sm text-xs font-display font-semibold uppercase tracking-wider transition-all ${
                 selectedStatus === tab.id
-                  ? 'bg-amber-500 text-stone-950 shadow-sm'
-                  : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'
+                  ? 'bg-gradient-to-b from-[#1C1A14] to-[#120F0B] text-[#D4AF37] border-b-2 border-[#D4AF37] shadow-sm'
+                  : 'text-[#8C8275] hover:text-[#F4EDE2]'
               }`}
             >
               {tab.label}
@@ -390,66 +327,57 @@ export const DuplicateReviewPage: React.FC<DuplicateReviewPageProps> = ({
           ))}
         </div>
 
-        {/* Band Filter & Search */}
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          {/* Band dropdown */}
-          <div className="flex items-center gap-1.5 bg-stone-950 px-2.5 py-1.5 rounded-xl border border-stone-800 text-xs">
-            <Filter className="w-3.5 h-3.5 text-stone-400" />
-            <span className="text-stone-400">Band:</span>
+        {/* Band & Search Controls */}
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          <div className="flex items-center gap-2 bg-[#101317] border border-[#D4AF37]/30 px-3 py-1.5 rounded-sm">
+            <span className="text-[#8C8275] font-mono uppercase text-[10px]">Confidence:</span>
             <select
               value={selectedBand}
               onChange={(e) => setSelectedBand(e.target.value)}
-              className="bg-transparent text-stone-200 focus:outline-none cursor-pointer font-medium"
+              className="bg-transparent text-[#F4EDE2] font-mono text-xs focus:outline-none cursor-pointer pr-1"
             >
-              <option value="all" className="bg-stone-900">All Bands</option>
-              <option value="possible" className="bg-stone-900">Possible</option>
-              <option value="strong" className="bg-stone-900">Strong</option>
-              <option value="unlikely" className="bg-stone-900">Unlikely</option>
+              <option value="all" className="bg-[#15191E]">All Confidence Bands</option>
+              <option value="strong" className="bg-[#15191E]">Strong Match (≥80)</option>
+              <option value="possible" className="bg-[#15191E]">Plausible Match (50–79)</option>
+              <option value="unlikely" className="bg-[#15191E]">Marginal (&lt;50)</option>
             </select>
           </div>
 
-          {/* Search box */}
-          <div className="relative flex-1 sm:w-60">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-[#8C8275] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search candidate names..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 bg-stone-950 border border-stone-800 rounded-xl text-xs text-stone-200 placeholder:text-stone-500 focus:outline-none focus:border-amber-500"
+              className="pl-8 pr-4 py-1.5 bg-[#101317] border border-[#D4AF37]/30 rounded-sm text-xs text-[#F4EDE2] placeholder:text-[#64707D] focus:outline-none focus:border-[#D4AF37]"
             />
           </div>
         </div>
       </div>
 
-      {/* Candidate List / Queue */}
-      <div className="mt-6 space-y-6">
+      {/* Candidate Dossiers Queue */}
+      <div className="space-y-8">
         {loading ? (
-          <div className="py-20 text-center">
-            <div className="w-10 h-10 rounded-full border-2 border-stone-800 border-t-amber-400 animate-spin mx-auto"></div>
-            <p className="text-stone-400 text-sm mt-4 font-mono">Evaluating candidate pairs from PostgreSQL...</p>
+          <div className="py-24 text-center space-y-4">
+            <div className="w-10 h-10 rounded-sm border-2 border-[#D4AF37]/30 border-t-[#D4AF37] animate-spin mx-auto"></div>
+            <p className="text-xs font-mono text-[#C4B59D] uppercase tracking-widest">
+              Synthesizing candidate pair dossiers from PostgreSQL database...
+            </p>
           </div>
         ) : filteredCandidates.length === 0 ? (
-          <div className="py-16 text-center bg-stone-900/40 rounded-3xl border border-dashed border-stone-800 p-8">
-            <div className="w-12 h-12 rounded-2xl bg-stone-800/80 border border-stone-700 flex items-center justify-center text-stone-400 mx-auto">
-              <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+          <div className="py-20 text-center border-2 border-dashed border-[#D4AF37]/20 rounded-sm p-8 bg-[#15191E]/60 space-y-3">
+            <div className="w-12 h-12 rounded-full bg-[#120F0B] border border-[#D4AF37]/30 flex items-center justify-center text-[#D4AF37] mx-auto">
+              <CheckCircle2 className="w-6 h-6 text-[#4C7A5E]" />
             </div>
-            <h3 className="text-lg font-semibold text-stone-200 mt-4">
-              {selectedStatus === 'pending' ? 'Review Queue is Clean!' : 'No match candidates found'}
+            <h3 className="text-lg font-display font-semibold text-[#F4EDE2] uppercase tracking-wider">
+              {selectedStatus === 'pending' ? 'Curatorial Queue is Clear' : 'No Candidate Dossiers Found'}
             </h3>
-            <p className="text-xs text-stone-400 max-w-md mx-auto mt-1.5">
+            <p className="text-xs font-serif text-[#A69B8D] max-w-md mx-auto leading-relaxed italic">
               {selectedStatus === 'pending'
-                ? 'No pending duplicate candidates match your current filter. You can click "Scan for Duplicates" to re-evaluate the full tree.'
-                : 'Try adjusting your status or band filters to see historical decisions.'}
+                ? 'All potential duplicate identity records have been evaluated. Run a heuristic scan to re-examine all lineages with updated blocking algorithms.'
+                : 'Try adjusting your status or confidence band filters to reveal archived dossiers.'}
             </p>
-            <button
-              onClick={handleScanAll}
-              disabled={scanning}
-              className="mt-5 inline-flex items-center gap-2 bg-stone-800 hover:bg-stone-700 text-amber-300 border border-amber-500/20 font-semibold px-4 py-2 rounded-xl text-xs transition-all"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${scanning ? 'animate-spin' : ''}`} />
-              <span>Run Heuristic Duplicate Scan</span>
-            </button>
           </div>
         ) : (
           filteredCandidates.map((candidate) => {
@@ -458,288 +386,225 @@ export const DuplicateReviewPage: React.FC<DuplicateReviewPageProps> = ({
             const currentCanonical = canonicalSelections[pairKey] || candidate.personAId;
             const b = candidate.breakdown;
 
+            const evalA = evaluatePersonClaims(candidate.personA?.claims || []);
+            const evalB = evaluatePersonClaims(candidate.personB?.claims || []);
+
+            const birthA = evalA['birth_date']?.bestClaims[0]?.value || '—';
+            const birthB = evalB['birth_date']?.bestClaims[0]?.value || '—';
+            const placeA = evalA['birth_place']?.bestClaims[0]?.value || '—';
+            const placeB = evalB['birth_place']?.bestClaims[0]?.value || '—';
+            const occA = evalA['occupation']?.bestClaims[0]?.value || '—';
+            const occB = evalB['occupation']?.bestClaims[0]?.value || '—';
+
             return (
-              <motion.div
+              <div
                 key={pairKey}
-                layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-stone-900 border border-stone-800 rounded-3xl p-6 shadow-lg relative overflow-hidden"
+                id={`candidate_pair_${pairKey}`}
+                className="deco-card p-6 sm:p-8 space-y-6 bg-[#15191E] border-2 border-[#D4AF37]/30 relative overflow-hidden shadow-lg"
               >
-                {/* Top Bar: Band Badge, Status, Heuristic Indicator */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-stone-800">
-                  <div className="flex items-center gap-2.5">
+                {/* Dossier Header: Band, Status, Score */}
+                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#D4AF37]/20 pb-5">
+                  <div className="flex flex-wrap items-center gap-3">
                     {getBandBadge(candidate.band)}
                     {getStatusBadge(candidate.status)}
                     {b?.blockingKey && (
-                      <span className="text-[11px] font-mono text-stone-400 bg-stone-950 px-2 py-0.5 rounded border border-stone-800">
-                        Block: {b.blockingKey}
+                      <span className="text-[10px] font-mono text-[#C4B59D] bg-[#101317] px-2.5 py-0.5 rounded-sm border border-[#2B333C] uppercase tracking-wider">
+                        Soundex Block: <strong className="text-[#D4AF37]">{b.blockingKey}</strong>
                       </span>
                     )}
                   </div>
 
                   <div className="text-right">
-                    <div className="text-xs text-stone-400 font-mono">
-                      Heuristic Score:{' '}
-                      <span className="text-amber-300 font-bold">{candidate.score}/100</span>
+                    <div className="text-xs font-mono text-[#A69B8D]">
+                      Composite Heuristic Similarity:{' '}
+                      <span className="text-[#D4AF37] font-bold text-sm">{candidate.score}/100</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Side-by-Side Comparison Container */}
-                <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Person A Card */}
+                {/* Side-by-Side Dual Document Comparison */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Document Record A */}
                   <div
-                    className={`rounded-2xl p-4 border transition-all ${
+                    className={`border-2 rounded-sm p-5 space-y-4 transition-all relative ${
                       currentCanonical === candidate.personAId && candidate.status === 'pending'
-                        ? 'bg-amber-500/5 border-amber-500/40 ring-1 ring-amber-500/30'
-                        : candidate.personA?.mergedInto
-                        ? 'bg-stone-950/60 border-stone-800/80 opacity-60'
-                        : 'bg-stone-950 border-stone-800'
+                        ? 'border-[#D4AF37] bg-gradient-to-b from-[#1C1A14] to-[#120F0B] shadow-[0_0_15px_rgba(212,175,55,0.15)] ring-1 ring-[#D4AF37]/40'
+                        : 'border-[#2B333C] bg-[#101317]'
                     }`}
                   >
-                    <div className="flex items-center justify-between pb-3 border-b border-stone-800/60">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold text-xs">
-                          A
+                    <div className="flex items-start justify-between border-b border-[#2B333C] pb-3 gap-2">
+                      <div>
+                        <div className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-widest">
+                          RECORD FOLIO A
                         </div>
-                        <div>
-                          <div className="text-xs font-semibold text-stone-200">
-                            {candidate.personA?.displayName || 'Person A'}
-                          </div>
-                          <div className="text-[10px] font-mono text-stone-400">
-                            ID: {candidate.personAId.slice(0, 8)}...
-                          </div>
+                        <h3 className="font-display font-bold text-lg text-[#F4EDE2] mt-0.5">
+                          {candidate.personA?.displayName || 'Record A'}
+                        </h3>
+                        <div className="text-[10px] font-mono text-[#8C8275]">
+                          REGISTRY ID: {candidate.personAId.slice(0, 12).toUpperCase()}...
                         </div>
                       </div>
 
-                      {onSelectPerson && (
+                      {candidate.status === 'pending' && (
                         <button
-                          onClick={() => onSelectPerson(candidate.personAId)}
-                          title="Open Person A profile"
-                          className="p-1.5 rounded-lg text-stone-400 hover:text-amber-300 hover:bg-stone-800 transition-colors text-xs flex items-center gap-1"
+                          onClick={() =>
+                            setCanonicalSelections((prev) => ({
+                              ...prev,
+                              [pairKey]: candidate.personAId,
+                            }))
+                          }
+                          className={`text-[10px] font-display font-semibold uppercase px-3 py-1.5 rounded-sm border transition-all tracking-wider shrink-0 ${
+                            currentCanonical === candidate.personAId
+                              ? 'border-[#D4AF37] bg-[#D4AF37]/20 text-[#D4AF37]'
+                              : 'border-[#2B333C] text-[#8C8275] hover:text-[#F4EDE2] hover:border-[#D4AF37]/40'
+                          }`}
                         >
-                          <span className="text-[10px]">View</span>
-                          <ArrowUpRight className="w-3 h-3" />
+                          {currentCanonical === candidate.personAId ? '✓ Target Canonical' : 'Set as Canonical'}
                         </button>
                       )}
                     </div>
 
-                    <div className="mt-3 space-y-2 text-xs">
-                      <div className="flex items-center gap-2 text-stone-300">
-                        <Calendar className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                        <span>Birth: {candidate.personA?.birthDate || 'Unspecified'}</span>
+                    {/* Attributes Ledger */}
+                    <div className="space-y-2 text-xs font-serif">
+                      <div className="flex justify-between py-1.5 border-b border-[#2B333C]/40">
+                        <span className="text-[#8C8275]">Birth Record:</span>
+                        <span className="text-[#F4EDE2] font-mono font-medium">{birthA}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-stone-300">
-                        <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                        <span className="truncate">Place: {candidate.personA?.birthPlace || 'Unspecified'}</span>
+                      <div className="flex justify-between py-1.5 border-b border-[#2B333C]/40">
+                        <span className="text-[#8C8275]">Parish/Location:</span>
+                        <span className="text-[#F4EDE2] font-medium">{placeA}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-stone-400 text-[11px]">
-                        <User className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                        <span>{candidate.personA?.isLiving ? 'Living' : 'Deceased'} • {candidate.personA?.claims?.length || 0} claims</span>
+                      <div className="flex justify-between py-1.5">
+                        <span className="text-[#8C8275]">Historical Vocation:</span>
+                        <span className="text-[#F4EDE2] font-medium">{occA}</span>
                       </div>
                     </div>
-
-                    {candidate.personA?.mergedInto && (
-                      <div className="mt-3 py-1 px-2 rounded bg-stone-900 border border-stone-800 text-[10px] text-stone-400 font-mono">
-                        Merged into: {candidate.personA.mergedInto.slice(0, 8)}... (Hidden)
-                      </div>
-                    )}
                   </div>
 
-                  {/* Person B Card */}
+                  {/* Document Record B */}
                   <div
-                    className={`rounded-2xl p-4 border transition-all ${
+                    className={`border-2 rounded-sm p-5 space-y-4 transition-all relative ${
                       currentCanonical === candidate.personBId && candidate.status === 'pending'
-                        ? 'bg-amber-500/5 border-amber-500/40 ring-1 ring-amber-500/30'
-                        : candidate.personB?.mergedInto
-                        ? 'bg-stone-950/60 border-stone-800/80 opacity-60'
-                        : 'bg-stone-950 border-stone-800'
+                        ? 'border-[#D4AF37] bg-gradient-to-b from-[#1C1A14] to-[#120F0B] shadow-[0_0_15px_rgba(212,175,55,0.15)] ring-1 ring-[#D4AF37]/40'
+                        : 'border-[#2B333C] bg-[#101317]'
                     }`}
                   >
-                    <div className="flex items-center justify-between pb-3 border-b border-stone-800/60">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold text-xs">
-                          B
+                    <div className="flex items-start justify-between border-b border-[#2B333C] pb-3 gap-2">
+                      <div>
+                        <div className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-widest">
+                          RECORD FOLIO B
                         </div>
-                        <div>
-                          <div className="text-xs font-semibold text-stone-200">
-                            {candidate.personB?.displayName || 'Person B'}
-                          </div>
-                          <div className="text-[10px] font-mono text-stone-400">
-                            ID: {candidate.personBId.slice(0, 8)}...
-                          </div>
+                        <h3 className="font-display font-bold text-lg text-[#F4EDE2] mt-0.5">
+                          {candidate.personB?.displayName || 'Record B'}
+                        </h3>
+                        <div className="text-[10px] font-mono text-[#8C8275]">
+                          REGISTRY ID: {candidate.personBId.slice(0, 12).toUpperCase()}...
                         </div>
                       </div>
 
-                      {onSelectPerson && (
+                      {candidate.status === 'pending' && (
                         <button
-                          onClick={() => onSelectPerson(candidate.personBId)}
-                          title="Open Person B profile"
-                          className="p-1.5 rounded-lg text-stone-400 hover:text-cyan-300 hover:bg-stone-800 transition-colors text-xs flex items-center gap-1"
+                          onClick={() =>
+                            setCanonicalSelections((prev) => ({
+                              ...prev,
+                              [pairKey]: candidate.personBId,
+                            }))
+                          }
+                          className={`text-[10px] font-display font-semibold uppercase px-3 py-1.5 rounded-sm border transition-all tracking-wider shrink-0 ${
+                            currentCanonical === candidate.personBId
+                              ? 'border-[#D4AF37] bg-[#D4AF37]/20 text-[#D4AF37]'
+                              : 'border-[#2B333C] text-[#8C8275] hover:text-[#F4EDE2] hover:border-[#D4AF37]/40'
+                          }`}
                         >
-                          <span className="text-[10px]">View</span>
-                          <ArrowUpRight className="w-3 h-3" />
+                          {currentCanonical === candidate.personBId ? '✓ Target Canonical' : 'Set as Canonical'}
                         </button>
                       )}
                     </div>
 
-                    <div className="mt-3 space-y-2 text-xs">
-                      <div className="flex items-center gap-2 text-stone-300">
-                        <Calendar className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                        <span>Birth: {candidate.personB?.birthDate || 'Unspecified'}</span>
+                    {/* Attributes Ledger */}
+                    <div className="space-y-2 text-xs font-serif">
+                      <div className="flex justify-between py-1.5 border-b border-[#2B333C]/40">
+                        <span className="text-[#8C8275]">Birth Record:</span>
+                        <span className="text-[#F4EDE2] font-mono font-medium">{birthB}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-stone-300">
-                        <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                        <span className="truncate">Place: {candidate.personB?.birthPlace || 'Unspecified'}</span>
+                      <div className="flex justify-between py-1.5 border-b border-[#2B333C]/40">
+                        <span className="text-[#8C8275]">Parish/Location:</span>
+                        <span className="text-[#F4EDE2] font-medium">{placeB}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-stone-400 text-[11px]">
-                        <User className="w-3.5 h-3.5 text-stone-500 shrink-0" />
-                        <span>{candidate.personB?.isLiving ? 'Living' : 'Deceased'} • {candidate.personB?.claims?.length || 0} claims</span>
+                      <div className="flex justify-between py-1.5">
+                        <span className="text-[#8C8275]">Historical Vocation:</span>
+                        <span className="text-[#F4EDE2] font-medium">{occB}</span>
                       </div>
                     </div>
-
-                    {candidate.personB?.mergedInto && (
-                      <div className="mt-3 py-1 px-2 rounded bg-stone-900 border border-stone-800 text-[10px] text-stone-400 font-mono">
-                        Merged into: {candidate.personB.mergedInto.slice(0, 8)}... (Hidden)
-                      </div>
-                    )}
                   </div>
                 </div>
 
-                {/* Detailed Scoring Breakdown Panel */}
+                {/* Heuristic Breakdown Monograph Strip */}
                 {b && (
-                  <div className="mt-5 p-4 bg-stone-950/60 rounded-2xl border border-stone-800/80">
-                    <div className="text-xs font-semibold text-stone-300 flex items-center justify-between pb-2 border-b border-stone-800/60">
-                      <span className="flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                        Heuristic Factor Scoring & Evidence
-                      </span>
-                      <span className="text-[10px] text-stone-400 font-mono">
-                        Not a calibrated model; heuristic band evaluation
-                      </span>
+                  <div className="border border-[#D4AF37]/20 bg-[#101317] p-4 rounded-sm space-y-2">
+                    <div className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-widest flex items-center gap-2">
+                      <Binary className="w-3.5 h-3.5" />
+                      <span>HEURISTIC SIMILARITY DECOMPOSITION MATRIX</span>
                     </div>
-
-                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-                      {/* Name Similarity */}
-                      <div className="p-2.5 rounded-xl bg-stone-900/80 border border-stone-800">
-                        <div className="flex items-center justify-between text-stone-300 font-medium">
-                          <span>Fuzzy Name</span>
-                          <span className="font-mono text-amber-300">{b.nameSimilarity}/30</span>
-                        </div>
-                        <p className="text-[11px] text-stone-400 mt-1 leading-snug">{b.nameNotes}</p>
-                      </div>
-
-                      {/* Birth Proximity */}
-                      <div className="p-2.5 rounded-xl bg-stone-900/80 border border-stone-800">
-                        <div className="flex items-center justify-between text-stone-300 font-medium">
-                          <span>Birth Proximity</span>
-                          <span className="font-mono text-amber-300">{b.birthProximity}/25</span>
-                        </div>
-                        <p className="text-[11px] text-stone-400 mt-1 leading-snug">{b.birthNotes}</p>
-                      </div>
-
-                      {/* Birthplace */}
-                      <div className="p-2.5 rounded-xl bg-stone-900/80 border border-stone-800">
-                        <div className="flex items-center justify-between text-stone-300 font-medium">
-                          <span>Birthplace</span>
-                          <span className="font-mono text-amber-300">{b.birthplaceMatch}/15</span>
-                        </div>
-                        <p className="text-[11px] text-stone-400 mt-1 leading-snug">{b.birthplaceNotes}</p>
-                      </div>
-
-                      {/* Family Resolution (Weighted Highest) */}
-                      <div className="p-2.5 rounded-xl bg-amber-500/5 border border-amber-500/20">
-                        <div className="flex items-center justify-between text-amber-200 font-medium">
-                          <span>Linked Family</span>
-                          <span className="font-mono text-amber-400 font-bold">{b.familyResolution}/40</span>
-                        </div>
-                        <p className="text-[11px] text-amber-300/80 mt-1 leading-snug">{b.familyNotes}</p>
-                      </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px] font-mono text-[#A69B8D]">
+                      <div>Name Levenshtein: <span className="text-[#F4EDE2] font-bold">{b.nameScore ?? '—'}/40</span></div>
+                      <div>Birth Decade Match: <span className="text-[#F4EDE2] font-bold">{b.birthScore ?? '—'}/25</span></div>
+                      <div>Location Token Overlap: <span className="text-[#F4EDE2] font-bold">{b.placeScore ?? '—'}/15</span></div>
+                      <div>Kinship Closure Overlap: <span className="text-[#F4EDE2] font-bold">{b.relScore ?? '—'}/20</span></div>
                     </div>
                   </div>
                 )}
 
-                {/* Bottom Action Footer */}
-                <div className="mt-5 pt-4 border-t border-stone-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  {candidate.status === 'pending' ? (
-                    <>
-                      {/* Canonical Record Selector */}
-                      <div className="flex items-center gap-2 text-xs text-stone-300 w-full sm:w-auto">
-                        <span className="text-stone-400">Canonical Record:</span>
-                        <select
-                          value={currentCanonical}
-                          onChange={(e) =>
-                            setCanonicalSelections((prev) => ({
-                              ...prev,
-                              [pairKey]: e.target.value,
-                            }))
-                          }
-                          className="bg-stone-950 text-stone-200 border border-stone-700 px-2.5 py-1.5 rounded-xl text-xs focus:outline-none focus:border-amber-500 font-medium"
-                        >
-                          <option value={candidate.personAId}>
-                            Keep Person A (Merge B into A)
-                          </option>
-                          <option value={candidate.personBId}>
-                            Keep Person B (Merge A into B)
-                          </option>
-                        </select>
-                      </div>
+                {/* Curatorial Resolution Actions */}
+                <div className="border-t border-[#D4AF37]/20 pt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="text-xs text-[#A69B8D] font-serif italic">
+                    {candidate.status === 'pending'
+                      ? 'Reconciliation non-destructively seals the secondary identity into the canonical dossier, preserving all evidence.'
+                      : `Curatorial Decree: ${candidate.decidedAt ? new Date(candidate.decidedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'Historical Accession'}`}
+                  </div>
 
-                      {/* Approve & Reject Actions */}
-                      <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  <div className="flex items-center gap-3 shrink-0">
+                    {candidate.status === 'pending' ? (
+                      <>
                         <button
-                          onClick={() => handleReject(candidate)}
+                          id={`dismiss_candidate_${pairKey}`}
+                          onClick={() => handleDismiss(candidate)}
                           disabled={isProcessing}
-                          className="inline-flex items-center gap-1.5 bg-stone-950 hover:bg-rose-950/40 text-rose-400 border border-stone-800 hover:border-rose-800/60 font-semibold px-3.5 py-2 rounded-xl text-xs transition-all active:scale-95 disabled:opacity-50"
+                          className="px-4 py-2 bg-[#101317] hover:bg-[#1A1F26] text-[#A69B8D] hover:text-[#F4EDE2] border border-[#2B333C] rounded-sm text-xs font-display uppercase tracking-wider transition-colors"
                         >
-                          <XCircle className="w-3.5 h-3.5" />
-                          <span>Reject Match</span>
+                          Dismiss Candidate
                         </button>
-
                         <button
+                          id={`approve_merge_${pairKey}`}
                           onClick={() => handleApprove(candidate)}
                           disabled={isProcessing}
-                          className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold px-4 py-2 rounded-xl text-xs transition-all shadow-md active:scale-95 disabled:opacity-50"
+                          className="px-5 py-2 bg-gradient-to-b from-[#E6CA65] to-[#B88728] text-[#120F0B] font-display text-xs font-bold uppercase tracking-wider rounded-sm shadow-md transition-all active:scale-95 border border-[#F3E5AB]"
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Approve & Merge Duplicate</span>
+                          {isProcessing ? 'Sealing...' : 'Approve & Reconcile'}
                         </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-xs text-stone-400">
-                        {candidate.status === 'approved' ? (
-                          <span className="text-emerald-400 flex items-center gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            Duplicate merged into canonical record without deleting history.
-                          </span>
-                        ) : (
-                          <span className="text-rose-400 flex items-center gap-1.5">
-                            <XCircle className="w-3.5 h-3.5" />
-                            Match marked as distinct persons.
-                          </span>
-                        )}
-                        {candidate.reviewedBy && (
-                          <span className="text-[11px] text-stone-500 block mt-0.5">
-                            Reviewed by {candidate.reviewedBy} • {candidate.reviewedAt ? new Date(candidate.reviewedAt).toLocaleDateString() : ''}
-                          </span>
-                        )}
-                      </div>
-
+                      </>
+                    ) : candidate.status === 'approved' ? (
                       <button
-                        onClick={() => handleRevert(candidate)}
+                        id={`unmerge_candidate_${pairKey}`}
+                        onClick={() => handleUnmerge(candidate)}
                         disabled={isProcessing}
-                        className="inline-flex items-center gap-1.5 bg-stone-950 hover:bg-stone-800 text-stone-300 border border-stone-700 font-semibold px-3 py-1.5 rounded-xl text-xs transition-all active:scale-95 disabled:opacity-50"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#101317] hover:bg-[#1A1F26] text-[#F4EDE2] border border-[#D4AF37]/40 rounded-sm text-xs font-display uppercase tracking-wider transition-colors"
                       >
-                        <RotateCcw className="w-3 h-3 text-stone-400" />
-                        <span>Revert Decision</span>
+                        <RotateCcw className="w-3.5 h-3.5 text-[#D4AF37]" />
+                        <span>Revert Reconciliation</span>
                       </button>
-                    </>
-                  )}
+                    ) : (
+                      <button
+                        onClick={() => handleApprove(candidate)}
+                        disabled={isProcessing}
+                        className="px-4 py-2 bg-[#101317] hover:bg-[#1A1F26] text-[#D4AF37] border border-[#D4AF37]/40 rounded-sm text-xs font-display uppercase tracking-wider transition-colors"
+                      >
+                        Re-evaluate & Reconcile
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </motion.div>
+              </div>
             );
           })
         )}

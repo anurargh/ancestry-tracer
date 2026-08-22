@@ -1,23 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.tsx';
-import { PersonRecord } from '../types.ts';
 import {
+  X,
   Sparkles,
   ShieldCheck,
   ShieldAlert,
-  Search,
-  Users,
-  Globe,
-  Lock,
-  GitMerge,
   ArrowRight,
-  HelpCircle,
-  FolderTree,
-  UserCheck,
+  ExternalLink,
+  Users,
+  Compass,
+  CheckCircle2,
+  Lock,
+  Globe,
+  Scroll,
 } from 'lucide-react';
+import { motion } from 'motion/react';
+import { PersonRecord } from '../types.ts';
 
 interface RelativeDiscoveryModalProps {
-  person: PersonRecord & { displayName: string };
+  person: PersonRecord;
   onClose: () => void;
   onSelectRelative?: (personId: string) => void;
 }
@@ -27,204 +28,153 @@ export const RelativeDiscoveryModal: React.FC<RelativeDiscoveryModalProps> = ({
   onClose,
   onSelectRelative,
 }) => {
-  const { getAuthHeaders } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<any | null>(null);
+  const { getIdToken } = useAuth();
+  const [matches, setMatches] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const runDiscovery = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const headers = await getAuthHeaders();
-      const res = await fetch('/api/discovery/search', {
-        method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ personId: person.personId }),
-      });
+  useEffect(() => {
+    const discoverRelatives = async () => {
+      setLoading(true);
+      try {
+        const token = await getIdToken();
+        const res = await fetch(`/api/discovery/relatives/${person.personId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-      if (res.ok) {
-        const data = await res.json();
-        setResults(data);
-      } else {
-        const err = await res.json();
-        setError(err.error || 'Failed to execute discovery search.');
+        if (res.ok) {
+          const data = await res.json();
+          setMatches(data.matches || []);
+        } else {
+          const errData = await res.json();
+          setError(errData.error || 'Failed to discover living relatives');
+        }
+      } catch (err: any) {
+        console.error('Discovery error:', err);
+        setError(err.message || 'Network discovery error');
+      } finally {
+        setLoading(false);
       }
-    } catch (err: any) {
-      setError(err.message || 'Network error during discovery search.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  React.useEffect(() => {
-    runDiscovery();
+    discoverRelatives();
   }, [person.personId]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-stone-900 border border-stone-800 rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto font-sans">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="deco-card bg-[#15191E] border-2 border-[#D4AF37] rounded-sm w-full max-w-2xl max-h-[90vh] flex flex-col shadow-[0_10px_40px_rgba(0,0,0,0.8)] my-8"
+      >
         {/* Header */}
-        <div className="p-5 border-b border-stone-800 flex items-center justify-between bg-stone-950/60">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
-              <Sparkles className="w-5 h-5" />
+        <div className="flex items-center justify-between px-6 py-5 border-b border-[#D4AF37]/30 bg-[#120F0B]">
+          <div>
+            <div className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-[0.2em] flex items-center gap-1.5">
+              <Scroll className="w-3.5 h-3.5" />
+              <span>ZERO-LEAKAGE RELATIVE DISCOVERY</span>
             </div>
-            <div>
-              <h2 className="text-base font-bold text-stone-100 flex items-center gap-2">
-                <span>Relative Discovery for</span>
-                <span className="text-amber-300">{person.displayName}</span>
-              </h2>
-              <div className="text-xs text-stone-400 flex items-center gap-2 mt-0.5">
-                <span>Status: {person.isLiving ? 'Living Individual' : 'Deceased Individual'}</span>
-                <span>•</span>
-                <span className="font-mono">Privacy: {person.privacyLevel || 'family_only'}</span>
-              </div>
-            </div>
+            <h2 className="text-xl font-display font-bold text-[#F4EDE2] mt-0.5 uppercase tracking-wide">
+              Mutual Consented Relative Discoveries
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-stone-400 hover:text-stone-100 p-1.5 rounded-lg hover:bg-stone-800 transition-colors"
+            className="p-1.5 rounded-sm text-[#8C8275] hover:text-[#F4EDE2] hover:bg-[#1A1F26] transition-colors border border-transparent hover:border-[#D4AF37]/40"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Zero-Leakage Privacy Banner */}
-        <div className="bg-stone-950/90 border-b border-stone-800/80 px-5 py-3 flex items-start gap-3">
-          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-          <div className="text-xs space-y-0.5">
-            <div className="font-semibold text-stone-200">
-              Zero-Information-Leak Privacy Guarantee
+        {/* Body */}
+        <div className="p-6 overflow-y-auto space-y-5 flex-1 text-xs font-sans">
+          {/* Dual Consent Privacy Callout */}
+          <div className="p-4 bg-[#120F0B] border border-[#D4AF37]/30 rounded-sm space-y-1.5">
+            <div className="flex items-center gap-2 font-display uppercase tracking-wider text-[11px] font-semibold text-[#85C49F]">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Zero-Information-Leak Living Privacy Guarantee</span>
             </div>
-            <p className="text-stone-400 text-[11px] leading-relaxed">
-              Living relatives are only surfaced if <strong>both</strong> you and the other tree owner
-              have opted into discovery. When consent is not granted, records are silently excluded with{' '}
-              <strong>zero leakage</strong> (no hidden counters or masked placeholders).
+            <p className="text-[11px] font-serif text-[#C4B59D] leading-relaxed italic">
+              Living individuals are discoverable only when both the querying researcher and the repository curator have mutually granted opt-in consent. If either party declines, results return an empty payload without leaking presence or record counts.
             </p>
           </div>
-        </div>
 
-        {/* Content Body */}
-        <div className="p-5 overflow-y-auto space-y-5 flex-1">
           {loading ? (
-            <div className="py-12 text-center space-y-3">
-              <div className="w-8 h-8 rounded-full border-2 border-stone-700 border-t-amber-400 animate-spin mx-auto"></div>
-              <p className="text-xs text-stone-400">
-                Scanning cross-tree kinship graphs and phonetics with privacy gates...
-              </p>
+            <div className="py-16 text-center space-y-3">
+              <div className="w-8 h-8 border-2 border-[#D4AF37]/30 border-t-[#D4AF37] rounded-sm animate-spin mx-auto"></div>
+              <p className="font-mono text-xs text-[#8C8275] uppercase tracking-widest">Querying mutual consent repositories...</p>
             </div>
           ) : error ? (
-            <div className="p-4 rounded-xl bg-red-950/50 border border-red-800 text-red-200 text-xs">
+            <div className="p-4 bg-[#2A1513] border border-[#9C4A3C]/60 rounded-sm text-[#EBB4AC] font-serif">
               {error}
             </div>
-          ) : results ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between text-xs text-stone-400 font-mono">
-                <span>DISCOVERED MATCHES ({results.totalDiscovered})</span>
-                <span>
-                  Your Consent:{' '}
-                  {results.userOptedIn ? (
-                    <span className="text-emerald-400 font-semibold">Active</span>
-                  ) : (
-                    <span className="text-amber-400">Opted Out (Deceased matches only)</span>
-                  )}
-                </span>
+          ) : matches.length === 0 ? (
+            <div className="py-12 text-center border-2 border-dashed border-[#2B333C] rounded-sm p-6 space-y-2">
+              <Compass className="w-8 h-8 text-[#8C8275] mx-auto" />
+              <div className="font-display font-bold text-sm text-[#F4EDE2] uppercase tracking-wide">No Consented Lineage Matches Located</div>
+              <p className="text-xs font-serif text-[#8C8275] max-w-sm mx-auto italic">
+                No external researcher repositories with active mutual consent match this individual's genealogical coordinates.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-wider">
+                DISCOVERED RELATIVES ({matches.length})
               </div>
 
-              {results.matches && results.matches.length > 0 ? (
-                <div className="space-y-3">
-                  {results.matches.map((m: any) => (
-                    <div
-                      key={m.personId}
-                      className="p-4 rounded-xl bg-stone-950/70 border border-stone-800/90 space-y-3 hover:border-amber-500/40 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-bold text-stone-100">{m.name}</h4>
-                            <span
-                              className={`text-[10px] px-2 py-0.5 rounded-full font-mono uppercase ${
-                                m.band === 'strong'
-                                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                                  : m.band === 'possible'
-                                  ? 'bg-amber-950 text-amber-300 border border-amber-800'
-                                  : 'bg-stone-800 text-stone-400'
-                              }`}
-                            >
-                              {m.band} Match ({m.score}/100)
-                            </span>
-                          </div>
-
-                          <div className="text-xs text-stone-400 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                            {m.birthDate && <span>Born: {m.birthDate}</span>}
-                            {m.birthPlace && <span>Place: {m.birthPlace}</span>}
-                            <span className="flex items-center gap-1 text-stone-400">
-                              <FolderTree className="w-3 h-3 text-stone-500" />
-                              <span>{m.treeName}</span>
-                            </span>
-                            <span className="text-stone-500">Owner: {m.ownerDisplayName}</span>
-                          </div>
-                        </div>
-
-                        {onSelectRelative && (
-                          <button
-                            onClick={() => {
-                              onSelectRelative(m.personId);
-                              onClose();
-                            }}
-                            className="px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-medium border border-stone-700 transition-colors shrink-0"
-                          >
-                            Inspect Person
-                          </button>
-                        )}
+              {matches.map((m, idx) => (
+                <div
+                  key={idx}
+                  className="p-4 bg-[#101317] border border-[#D4AF37]/30 hover:border-[#D4AF37] rounded-sm space-y-2 transition-all shadow-sm"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-display font-bold text-sm text-[#F4EDE2]">
+                        {m.displayName}
+                      </h4>
+                      <div className="text-[10px] text-[#8C8275] font-mono mt-0.5">
+                        Repository: {m.treeName || 'Consented Lineage'} • Curator: {m.ownerName || 'Verified Researcher'}
                       </div>
-
-                      {/* Kinship / Relationship Path */}
-                      {m.relationshipSummary && (
-                        <div className="p-2.5 rounded-lg bg-stone-900 border border-stone-800 text-xs space-y-1">
-                          <div className="font-semibold text-amber-300 flex items-center gap-1.5">
-                            <Users className="w-3.5 h-3.5" />
-                            <span>Calculated Kinship: {m.relationshipSummary}</span>
-                          </div>
-                          {m.connection && (
-                            <p className="text-[11px] text-stone-400 leading-tight">
-                              {m.connection.explanation}
-                            </p>
-                          )}
-                        </div>
-                      )}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-8 text-center bg-stone-950/40 rounded-xl border border-stone-800/80 space-y-2">
-                  <UserCheck className="w-8 h-8 mx-auto text-stone-600" />
-                  <div className="text-xs font-medium text-stone-300">
-                    No Discoverable Relatives Found
+
+                    <span className="text-[10px] font-mono px-2.5 py-1 rounded-sm border border-[#4C7A5E] bg-[#162A1F] text-[#85C49F] font-bold tracking-wider">
+                      MUTUAL CONSENT
+                    </span>
                   </div>
-                  <p className="text-[11px] text-stone-500 max-w-sm mx-auto">
-                    No duplicate matches or shared lineages with active mutual consent were detected.
-                  </p>
+
+                  {m.relationship && (
+                    <div className="text-xs font-serif text-[#C4B59D] italic">
+                      Estimated Kinship Vector: <strong className="text-[#F4EDE2] not-italic">{m.relationship}</strong>
+                    </div>
+                  )}
+
+                  {onSelectRelative && m.personId && (
+                    <div className="pt-2 border-t border-[#2B333C] flex justify-end">
+                      <button
+                        onClick={() => onSelectRelative(m.personId)}
+                        className="text-xs text-[#D4AF37] hover:text-[#F4EDE2] flex items-center gap-1.5 font-display uppercase tracking-wider"
+                      >
+                        <span>Inspect Relative Dossier</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
             </div>
-          ) : null}
+          )}
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-stone-800 bg-stone-950/60 flex items-center justify-between">
-          <div className="text-[11px] text-stone-400">
-            Target Record ID: <span className="font-mono text-stone-300">{person.personId.slice(0, 12)}...</span>
-          </div>
+        <div className="flex items-center justify-end px-6 py-4 border-t border-[#D4AF37]/20 bg-[#120F0B]">
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-medium transition-colors"
+            className="px-5 py-2 bg-[#15191E] hover:bg-[#1C222A] text-[#F4EDE2] border border-[#D4AF37]/30 rounded-sm text-xs font-display uppercase tracking-wider transition-colors"
           >
-            Close
+            Close Chamber
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };

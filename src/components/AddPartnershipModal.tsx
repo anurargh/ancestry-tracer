@@ -1,20 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
-  PersonRecord,
   PartnershipUnionType,
   UNION_TYPE_LABELS,
-  SOURCE_TYPE_LABELS,
-  SourceType,
+  PersonRecord,
 } from '../types.ts';
+import { X, Heart, Search, Scroll } from 'lucide-react';
+import { motion } from 'motion/react';
 import { evaluatePersonClaims } from '../utils/claims.ts';
-import {
-  X,
-  Heart,
-  ShieldCheck,
-  Search,
-  Calendar,
-  AlertTriangle,
-} from 'lucide-react';
 
 interface AddPartnershipModalProps {
   isOpen: boolean;
@@ -32,73 +24,66 @@ export const AddPartnershipModal: React.FC<AddPartnershipModalProps> = ({
   getIdToken,
 }) => {
   const [people, setPeople] = useState<PersonRecord[]>([]);
-  const [loadingPeople, setLoadingPeople] = useState<boolean>(true);
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedPartnerId, setSelectedPartnerId] = useState<string>('');
-  const [unionType, setUnionType] = useState<PartnershipUnionType>('marriage');
+  const [partnerId, setPartnerId] = useState<string>('');
+  const [unionType, setUnionType] = useState<PartnershipUnionType>('married');
   const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Provenance / Source inputs
-  const [sourceType, setSourceType] = useState<SourceType>('certificate');
-  const [citation, setCitation] = useState<string>('');
-  const [reliabilityTier, setReliabilityTier] = useState<number>(5);
-
-  const [saving, setSaving] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const currentPersonEval = evaluatePersonClaims(currentPerson.claims || []);
-  const currentPersonName =
-    currentPersonEval['name']?.bestClaims[0]?.value || `Person (${currentPerson.personId.slice(0, 8)})`;
-
-  // Fetch all people in the registry
   useEffect(() => {
     if (!isOpen) return;
-    const fetchAllPeople = async () => {
-      setLoadingPeople(true);
+
+    const fetchTreePeople = async () => {
+      setLoading(true);
       try {
         const token = await getIdToken();
-        const res = await fetch('/api/people', {
+        const res = await fetch(`/api/people?treeId=${currentPerson.treeId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
           const data = await res.json();
-          // Filter out current person and existing partners
-          const existingPartnerIds = new Set(
-            (currentPerson.partnerships || []).map((p) => p.partner.personId)
+          const candidates = (data.people || []).filter(
+            (p: PersonRecord) => p.personId !== currentPerson.personId
           );
-          const list: PersonRecord[] = (data.people || []).filter(
-            (p: PersonRecord) =>
-              p.personId !== currentPerson.personId && !existingPartnerIds.has(p.personId)
-          );
-          setPeople(list);
+          setPeople(candidates);
+          if (candidates.length > 0) {
+            setPartnerId(candidates[0].personId);
+          }
         }
       } catch (err) {
-        console.error('Failed to fetch people for partnership modal:', err);
+        console.error('Failed to load candidate partners:', err);
       } finally {
-        setLoadingPeople(false);
+        setLoading(false);
       }
     };
 
-    fetchAllPeople();
-  }, [isOpen, currentPerson.personId, currentPerson.partnerships]);
-
-  const handleSourceTypeChange = (newType: SourceType) => {
-    setSourceType(newType);
-    setReliabilityTier(SOURCE_TYPE_LABELS[newType]?.defaultTier || 4);
-  };
+    fetchTreePeople();
+  }, [isOpen, currentPerson.personId, currentPerson.treeId]);
 
   if (!isOpen) return null;
 
+  const currentEval = evaluatePersonClaims(currentPerson.claims || []);
+  const currentName = currentEval['name']?.bestClaims[0]?.value || 'Current Record';
+
+  const filteredCandidates = people.filter((p) => {
+    if (!searchQuery.trim()) return true;
+    const pEval = evaluatePersonClaims(p.claims || []);
+    const pName = (pEval['name']?.bestClaims[0]?.value || '').toLowerCase();
+    return pName.includes(searchQuery.toLowerCase());
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPartnerId) {
-      setError('Please select a partner from the registry.');
+    if (!partnerId) {
+      setError('Please select a partner from the archival registry.');
       return;
     }
 
-    setSaving(true);
     setError(null);
+    setIsSubmitting(true);
 
     try {
       const token = await getIdToken();
@@ -109,146 +94,107 @@ export const AddPartnershipModal: React.FC<AddPartnershipModalProps> = ({
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          person1Id: currentPerson.personId,
-          person2Id: selectedPartnerId,
+          personAId: currentPerson.personId,
+          personBId: partnerId,
           unionType,
           startDate: startDate.trim() || undefined,
-          endDate: endDate.trim() || undefined,
-          sourceType,
-          citation: citation.trim() || undefined,
-          reliabilityTier: Number(reliabilityTier),
         }),
       });
 
       const data = await res.json();
-
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to save partnership.');
+        throw new Error(data.error || 'Failed to record partnership union');
       }
 
       onPartnershipAdded();
       onClose();
     } catch (err: any) {
-      console.error('Error creating partnership:', err);
-      setError(err.message || 'Failed to save partnership.');
+      console.error('Partnership creation error:', err);
+      setError(err.message || 'Error recording spousal union');
     } finally {
-      setSaving(false);
+      setIsSubmitting(false);
     }
   };
 
-  // Filter people by query
-  const filteredPeople = people.filter((p) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
-    const evalData = evaluatePersonClaims(p.claims || []);
-    const name = evalData['name']?.bestClaims[0]?.value?.toLowerCase() || '';
-    const birth = evalData['birth_date']?.bestClaims[0]?.value?.toLowerCase() || '';
-    const place = evalData['birth_place']?.bestClaims[0]?.value?.toLowerCase() || '';
-    return name.includes(q) || birth.includes(q) || place.includes(q) || p.personId.includes(q);
-  });
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-stone-900 border border-stone-800 rounded-2xl shadow-2xl overflow-hidden my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto font-sans">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="deco-card bg-[#15191E] border-2 border-[#D4AF37] rounded-sm w-full max-w-xl max-h-[90vh] flex flex-col shadow-[0_10px_40px_rgba(0,0,0,0.8)] my-8"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-stone-800 bg-stone-950/60">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-pink-500/10 text-pink-400 border border-pink-500/20">
-              <Heart className="w-5 h-5" />
+        <div className="flex items-center justify-between px-6 py-5 border-b border-[#D4AF37]/30 bg-[#120F0B]">
+          <div>
+            <div className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-[0.2em] flex items-center gap-1.5">
+              <Scroll className="w-3.5 h-3.5" />
+              <span>SPOUSAL & PARTNERSHIP RECORD</span>
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-stone-100 font-serif">
-                Link Spouse or Partner
-              </h2>
-              <p className="text-xs text-stone-400">
-                Record a union between <strong className="text-pink-300">{currentPersonName}</strong> and an existing person.
-              </p>
-            </div>
+            <h2 className="text-xl font-display font-bold text-[#F4EDE2] mt-0.5 uppercase tracking-wide">
+              Record Union with {currentName}
+            </h2>
           </div>
-
           <button
-            id="close-partnership-modal-btn"
             onClick={onClose}
-            className="p-2 text-stone-400 hover:text-stone-200 rounded-lg hover:bg-stone-800 transition-colors"
+            className="p-1.5 rounded-sm text-[#8C8275] hover:text-[#F4EDE2] hover:bg-[#1A1F26] transition-colors border border-transparent hover:border-[#D4AF37]/40"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5 flex-1 text-xs font-sans">
           {error && (
-            <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-800/40 text-rose-300 text-xs flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-              <span>{error}</span>
+            <div className="p-3.5 rounded-sm border border-[#9C4A3C]/60 bg-[#2A1513] text-[#EBB4AC] font-serif">
+              {error}
             </div>
           )}
 
-          {/* Section 1: Partner Picker */}
-          <div className="space-y-3">
-            <label className="block text-xs font-mono uppercase tracking-wider text-stone-300 font-semibold">
-              1. Select Partner from Registry
-            </label>
+          {/* Candidate Selection */}
+          <div className="space-y-2">
+            <label className="text-[#C4B59D] font-display uppercase tracking-wider text-[11px] font-medium">Select Partner / Spouse From Tree</label>
 
-            {/* Search input */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500" />
+              <Search className="w-3.5 h-3.5 text-[#8C8275] absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search registry by name, birth year, or place..."
+                placeholder="Filter individuals by name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-stone-950 border border-stone-800 rounded-xl text-xs text-stone-200 placeholder-stone-500 focus:outline-none focus:border-amber-500/50"
+                className="w-full pl-9 pr-3.5 py-2 bg-[#101317] border border-[#D4AF37]/30 rounded-sm text-[#F4EDE2] placeholder:text-[#64707D] focus:outline-none focus:border-[#D4AF37]"
               />
             </div>
 
-            {/* List */}
-            <div className="max-h-44 overflow-y-auto space-y-1.5 p-1 rounded-xl bg-stone-950/70 border border-stone-800">
-              {loadingPeople ? (
-                <div className="p-6 text-center text-xs text-stone-500">
-                  Loading registry records...
-                </div>
-              ) : filteredPeople.length === 0 ? (
-                <div className="p-6 text-center text-xs text-stone-500">
-                  No unpartnered individuals available in registry.
-                </div>
+            <div className="max-h-40 overflow-y-auto border border-[#2B333C] bg-[#101317] rounded-sm divide-y divide-[#2B333C]">
+              {loading ? (
+                <div className="p-4 text-center text-[#8C8275] font-mono">Loading candidates...</div>
+              ) : filteredCandidates.length === 0 ? (
+                <div className="p-4 text-center text-[#64707D] font-serif italic">No eligible candidates found.</div>
               ) : (
-                filteredPeople.map((p) => {
-                  const evalData = evaluatePersonClaims(p.claims || []);
-                  const name = evalData['name']?.bestClaims[0]?.value || 'Unnamed Person';
-                  const birth = evalData['birth_date']?.bestClaims[0]?.value;
-                  const isSelected = selectedPartnerId === p.personId;
+                filteredCandidates.map((cand) => {
+                  const cEval = evaluatePersonClaims(cand.claims || []);
+                  const cName = cEval['name']?.bestClaims[0]?.value || 'Unnamed Individual';
+                  const isSelected = partnerId === cand.personId;
 
                   return (
                     <div
-                      key={p.personId}
-                      id={`select-partner-${p.personId}`}
-                      onClick={() => setSelectedPartnerId(p.personId)}
-                      className={`p-3 rounded-lg border text-xs cursor-pointer flex items-center justify-between transition-all ${
-                        isSelected
-                          ? 'bg-pink-500/15 border-pink-500/60 text-pink-200 shadow-sm'
-                          : 'bg-stone-900/80 border-stone-850 hover:bg-stone-850 text-stone-300'
+                      key={cand.personId}
+                      onClick={() => setPartnerId(cand.personId)}
+                      className={`p-3 flex items-center justify-between cursor-pointer transition-all ${
+                        isSelected ? 'bg-gradient-to-r from-[#1C1A14] to-[#15191E] border-l-2 border-[#D4AF37]' : 'hover:bg-[#15191E]'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <div
-                          className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                            isSelected
-                              ? 'border-pink-400 bg-pink-400 text-stone-950'
-                              : 'border-stone-600 bg-stone-800'
-                          }`}
-                        >
-                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-stone-950" />}
-                        </div>
-                        <div>
-                          <span className="font-semibold text-stone-100 font-serif">{name}</span>
-                          {birth && <span className="text-stone-400 ml-2">(Born: {birth})</span>}
+                      <div>
+                        <div className="font-display font-semibold text-xs text-[#F4EDE2]">{cName}</div>
+                        <div className="text-[10px] text-[#8C8275] font-mono">
+                          FOLIO ID: {cand.personId.slice(0, 12).toUpperCase()}
                         </div>
                       </div>
-
-                      <span className="text-[10px] font-mono text-stone-500">
-                        {p.personId.slice(0, 8)}
-                      </span>
+                      {isSelected && (
+                        <span className="text-[10px] font-display uppercase tracking-wider text-[#D4AF37] px-2 py-0.5 bg-[#120F0B] border border-[#D4AF37]/30 rounded-sm font-bold">
+                          Selected
+                        </span>
+                      )}
                     </div>
                   );
                 })
@@ -256,165 +202,53 @@ export const AddPartnershipModal: React.FC<AddPartnershipModalProps> = ({
             </div>
           </div>
 
-          {/* Section 2: Union Type */}
-          <div className="space-y-3">
-            <label className="block text-xs font-mono uppercase tracking-wider text-stone-300 font-semibold">
-              2. Union Type
-            </label>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {(
-                [
-                  'marriage',
-                  'civil_union',
-                  'domestic_partnership',
-                  'common_law',
-                  'informal',
-                ] as PartnershipUnionType[]
-              ).map((type) => {
-                const isSelected = unionType === type;
-                const info = UNION_TYPE_LABELS[type];
-
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    id={`union-type-${type}-btn`}
-                    onClick={() => setUnionType(type)}
-                    className={`p-3 rounded-xl border text-left transition-all ${
-                      isSelected
-                        ? 'bg-pink-500/10 border-pink-500/60 text-pink-200 shadow-sm'
-                        : 'bg-stone-950 border-stone-800 hover:bg-stone-850 text-stone-400'
-                    }`}
-                  >
-                    <div className="font-semibold text-xs text-stone-200">{info.label}</div>
-                    <div className="text-[10px] text-stone-500 leading-tight mt-0.5 line-clamp-1">
-                      {info.description}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+          {/* Union Type */}
+          <div className="space-y-1.5">
+            <label className="text-[#C4B59D] font-display uppercase tracking-wider text-[11px] font-medium">Union Archetype</label>
+            <select
+              value={unionType}
+              onChange={(e) => setUnionType(e.target.value as PartnershipUnionType)}
+              className="w-full px-3.5 py-2.5 bg-[#101317] border border-[#D4AF37]/30 rounded-sm text-[#F4EDE2] focus:outline-none focus:border-[#D4AF37] cursor-pointer font-sans"
+            >
+              {Object.entries(UNION_TYPE_LABELS).map(([key, info]) => (
+                <option key={key} value={key} className="bg-[#15191E]">
+                  {info.label} ({info.description})
+                </option>
+              ))}
+            </select>
           </div>
 
-          {/* Section 3: Dates */}
-          <div className="space-y-3">
-            <label className="block text-xs font-mono uppercase tracking-wider text-stone-300 font-semibold">
-              3. Union Dates (Optional)
-            </label>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[11px] font-mono text-stone-400 mb-1">
-                  Start Date / Marriage Date
-                </label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500" />
-                  <input
-                    type="text"
-                    placeholder="e.g. 1912-06-15 or 1912"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-stone-950 border border-stone-800 rounded-xl text-xs text-stone-200 placeholder-stone-600 focus:outline-none focus:border-amber-500/50"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-mono text-stone-400 mb-1">
-                  End Date / Dissolution (if applicable)
-                </label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500" />
-                  <input
-                    type="text"
-                    placeholder="e.g. 1954-11-20 or 1954"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-stone-950 border border-stone-800 rounded-xl text-xs text-stone-200 placeholder-stone-600 focus:outline-none focus:border-amber-500/50"
-                  />
-                </div>
-              </div>
-            </div>
+          {/* Marriage Date */}
+          <div className="space-y-1.5">
+            <label className="text-[#C4B59D] font-display uppercase tracking-wider text-[11px] font-medium">Date of Marriage / Union (Optional)</label>
+            <input
+              type="text"
+              placeholder="e.g., 1895-06-22 or Circa June 1895"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-[#101317] border border-[#D4AF37]/30 rounded-sm text-[#F4EDE2] focus:outline-none focus:border-[#D4AF37] font-mono"
+            />
           </div>
 
-          {/* Section 4: Provenance & Source Citation */}
-          <div className="p-4 rounded-xl bg-stone-950 border border-stone-800/80 space-y-4">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-pink-400 font-mono">
-              <ShieldCheck className="w-4 h-4" />
-              <span>4. Provenance & Marriage Certificate Citation</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[11px] font-mono text-stone-400 mb-1">
-                  Source Document Type
-                </label>
-                <select
-                  value={sourceType}
-                  onChange={(e) => handleSourceTypeChange(e.target.value as SourceType)}
-                  className="w-full px-3 py-2 bg-stone-900 border border-stone-800 rounded-xl text-xs text-stone-200 focus:outline-none focus:border-amber-500/50"
-                >
-                  {Object.entries(SOURCE_TYPE_LABELS).map(([key, item]) => (
-                    <option key={key} value={key}>
-                      {item.label} (Tier {item.defaultTier})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-mono text-stone-400 mb-1">
-                  Reliability Rating (Tier 1–5)
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="5"
-                  value={reliabilityTier}
-                  onChange={(e) => setReliabilityTier(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-stone-900 border border-stone-800 rounded-xl text-xs text-stone-200 font-mono focus:outline-none focus:border-amber-500/50"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-mono text-stone-400 mb-1">
-                Citation & Archive Reference
-              </label>
-              <textarea
-                rows={2}
-                placeholder="e.g. County Marriage License #1920-44, Church Parish Register Vol. 3..."
-                value={citation}
-                onChange={(e) => setCitation(e.target.value)}
-                className="w-full px-3 py-2 bg-stone-900 border border-stone-800 rounded-xl text-xs text-stone-200 placeholder-stone-600 focus:outline-none focus:border-amber-500/50"
-              />
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-2 border-t border-stone-800">
+          {/* Footer Actions */}
+          <div className="flex items-center justify-end gap-3 pt-5 border-t border-[#D4AF37]/20">
             <button
               type="button"
-              id="cancel-partnership-btn"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-stone-400 hover:text-stone-200 transition-colors"
+              className="px-4 py-2 text-[#A69B8D] hover:text-[#F4EDE2] font-display uppercase text-xs"
             >
               Cancel
             </button>
-
             <button
               type="submit"
-              id="submit-partnership-btn"
-              disabled={saving || !selectedPartnerId}
-              className="inline-flex items-center gap-2 bg-pink-500 hover:bg-pink-400 disabled:opacity-50 disabled:cursor-not-allowed text-stone-950 font-semibold px-5 py-2.5 rounded-xl text-xs transition-all shadow-md active:scale-95"
+              disabled={isSubmitting}
+              className="px-6 py-2.5 bg-gradient-to-b from-[#E6CA65] to-[#B88728] text-[#120F0B] font-display font-bold uppercase text-xs rounded-sm shadow-md transition-all active:scale-95 border border-[#F3E5AB]"
             >
-              <Heart className="w-4 h-4" />
-              <span>{saving ? 'Saving Partnership...' : 'Save Partnership'}</span>
+              {isSubmitting ? 'Recording...' : 'Record Partnership Union'}
             </button>
           </div>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 };

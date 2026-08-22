@@ -1,1 +1,184 @@
 @import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-deco-display: 'Cinzel Decorative', 'Cinzel', Georgia, serif;
+    --font-deco-heading: 'Cinzel', 'Marcellus', Georgia, serif;
+    --font-deco-body: 'Cormorant Garamond', Georgia, serif;
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+
+    /* Art Deco Jewel-Tone & Gilded Brass Palette */
+    --color-obsidian-deep: #07090D;
+    --color-obsidian-card: #0D1219;
+    --color-obsidian-elevated: #131A24;
+    --color-obsidian-border: #222B38;
+    --color-obsidian-border-bright: #364457;
+
+    --color-gold-bright: #F5DE98;
+    --color-gold-primary: #C5A059;
+    --color-gold-aged: #9E782F;
+    --color-gold-dark: #634B1D;
+
+    /* Jewel Tones */
+    --color-emerald-deep: #0B221B;
+    --color-emerald-accent: #1D5C4A;
+    --color-emerald-light: #52B395;
+    
+    --color-sapphire-deep: #0A192F;
+    --color-sapphire-accent: #173B6C;
+    --color-sapphire-light: #64A0E8;
+
+    --color-garnet-deep: #240B13;
+    --color-garnet-accent: #5E1D31;
+    --color-garnet-light: #D9658B;
+
+    --color-parchment-ivory: #F7F3EB;
+    --color-parchment-text: #E8DFD0;
+    --color-parchment-muted: #A89F91;
+    --color-parchment-dim: #6E675C;
+  }
+
+  body {
+    background-color: #07090D;
+    color: #E8DFD0;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    background-image: 
+      radial-gradient(ellipse at 50% -10%, rgba(197, 160, 89, 0.08) 0%, transparent 60%),
+      radial-gradient(circle at 10% 30%, rgba(11, 34, 27, 0.25) 0%, transparent 45%),
+      radial-gradient(circle at 90% 70%, rgba(10, 25, 47, 0.25) 0%, transparent 45%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, .font-deco {
+    font-family: var(--font-deco-heading);
+    letter-spacing: 0.06em;
+  }
+
+  .font-display {
+    font-family: var(--font-deco-display);
+    letter-spacing: 0.1em;
+  }
+
+  .font-reading {
+    font-family: var(--font-deco-body);
+  }
+
+  code, pre, .font-mono {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Accessible focus styling with Art Deco Gold glow */
+:focus-visible {
+  outline: 2px solid #C5A059 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 10px rgba(197, 160, 89, 0.4) !important;
+}
+
+/* Art Deco Decorative Classes */
+.deco-gold-gradient {
+  background: linear-gradient(135deg, #F5DE98 0%, #C5A059 50%, #9E782F 100%);
+}
+
+.deco-gold-text {
+  background: linear-gradient(135deg, #FFF0C2 0%, #E2BA6E 40%, #B88B38 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.deco-double-border {
+  border: 1px solid #C5A059;
+  outline: 1px solid #C5A059;
+  outline-offset: 2px;
+}
+
+.deco-card {
+  background-color: #0D1219;
+  border: 1px solid #222B38;
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.deco-card:hover {
+  border-color: #C5A059;
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.7), 0 0 12px -2px rgba(197, 160, 89, 0.15);
+}
+
+.deco-panel {
+  background: linear-gradient(180deg, #0F151E 0%, #0A0E14 100%);
+  border: 1px solid #263140;
+  box-shadow: inset 0 1px 0 rgba(245, 222, 152, 0.08);
+}
+
+.deco-corner-accent {
+  position: relative;
+}
+
+.deco-corner-accent::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid #C5A059;
+  border-left: 2px solid #C5A059;
+  pointer-events: none;
+}
+
+.deco-corner-accent::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  border-bottom: 2px solid #C5A059;
+  border-right: 2px solid #C5A059;
+  pointer-events: none;
+}
+
+.deco-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: #C5A059;
+}
+
+.deco-divider::before,
+.deco-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #2B3747;
+}
+
+.deco-divider:not(:empty)::before {
+  margin-right: 1em;
+}
+
+.deco-divider:not(:empty)::after {
+  margin-left: 1em;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: #07090D;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #222B38;
+  border: 1px solid #364457;
+  border-radius: 0px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #C5A059;
+}
+

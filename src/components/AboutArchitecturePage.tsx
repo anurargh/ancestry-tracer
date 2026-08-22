@@ -15,260 +15,179 @@ import {
   Users,
   Search,
   BookOpen,
+  Workflow,
+  Scroll,
+  Binary,
+  Compass,
 } from 'lucide-react';
+import { motion } from 'motion/react';
 
 export const AboutArchitecturePage: React.FC = () => {
   return (
-    <div id="about_architecture_page" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
-      {/* Hero Header */}
-      <div className="text-center space-y-4 max-w-3xl mx-auto">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-950/80 border border-indigo-800/80 text-indigo-300 text-xs font-semibold uppercase tracking-wider">
-          <Sparkles className="w-3.5 h-3.5" />
-          Technical Demo Overview
+    <div id="about_architecture_page" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16 font-sans">
+      {/* Monograph Header */}
+      <div className="text-center space-y-5 max-w-3xl mx-auto">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-sm border border-[#D4AF37]/50 bg-[#1A1813] text-[#D4AF37] text-[11px] font-mono uppercase tracking-[0.25em]">
+          <Scroll className="w-3.5 h-3.5" />
+          <span>INSTITUTIONAL TECHNICAL MONOGRAPH • FOLIO № 500</span>
         </div>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-100 tracking-tight">
-          FamilyGraph Architecture & Core Engineering
+        <h1 className="text-3xl sm:text-5xl font-display font-bold text-[#F4EDE2] tracking-tight uppercase leading-tight">
+          Architectural Treatise & Graph Foundations
         </h1>
-        <p className="text-base text-slate-400 leading-relaxed">
-          A modern genealogical system built with claim-centric event sourcing, DAG cycle prevention, incremental ancestor closure indexing, multi-factor duplicate resolution, and zero-information-leak privacy.
+        <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent mx-auto"></div>
+        <p className="text-base sm:text-lg font-serif text-[#C4B59D] leading-relaxed italic">
+          A genealogical records institution engineered on claim-centric event sourcing, directed acyclic graph cycle validation, incremental ancestor closure indexing, and zero-information-leak cryptographic privacy.
         </p>
       </div>
 
       {/* Architecture Pillars Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Pillar 1: Claim-Centric Modeling */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-4 hover:border-slate-700 transition-all shadow-md">
-          <div className="w-10 h-10 rounded-xl bg-purple-950/80 border border-purple-800/60 flex items-center justify-center text-purple-400">
-            <Layers className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-slate-100">
-              1. Claim-Centric Event Sourcing
+        <div className="deco-card bg-[#15191E] border-2 border-[#D4AF37]/30 rounded-sm p-8 space-y-5 shadow-lg relative">
+          <div className="flex items-center justify-between border-b border-[#D4AF37]/20 pb-4">
+            <h3 className="text-lg font-display font-bold text-[#F4EDE2] flex items-center gap-3 uppercase tracking-wider">
+              <Layers className="w-5 h-5 text-[#D4AF37]" />
+              <span>1. Claim-Centric Event Sourcing</span>
             </h3>
-            <p className="text-xs font-mono text-purple-400 mt-0.5">
-              table: person_claim & source
-            </p>
+            <span className="text-[10px] font-mono text-[#D4AF37] bg-[#101317] px-2 py-0.5 rounded-sm border border-[#2B333C]">
+              table: person_claim
+            </span>
           </div>
-          <p className="text-sm text-slate-300 leading-relaxed">
-            Unlike traditional monolithic family tree databases that store a single static name or birth date column on the person record, FamilyGraph models genealogical reality through <strong className="text-slate-100">evidential claims</strong>.
+
+          <p className="text-xs font-serif text-[#C4B59D] leading-relaxed italic text-[14px]">
+            Unlike naive tabular schemas that store static single-value columns on person entities, FamilyGraph models historical reality through <strong className="text-[#F4EDE2] font-semibold">sourced evidentiary assertions</strong>.
           </p>
-          <ul className="space-y-2 text-xs text-slate-400">
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
-              <span>Multiple conflicting assertions (e.g. varying birth years in census vs death certificate) can coexist.</span>
+
+          <ul className="space-y-3 text-xs font-serif text-[#A69B8D]">
+            <li className="flex items-start gap-3">
+              <CheckCircle2 className="w-4 h-4 text-[#85C49F] shrink-0 mt-0.5" />
+              <span><strong className="text-[#F4EDE2]">Multi-Claim Coexistence:</strong> Conflicting assertions (e.g. military pension vs baptismal register) coexist naturally without data loss.</span>
             </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
-              <span>Claims have reliability tiers (1=Oral Tradition to 5=Official Certificate) and confidence scoring.</span>
+            <li className="flex items-start gap-3">
+              <CheckCircle2 className="w-4 h-4 text-[#85C49F] shrink-0 mt-0.5" />
+              <span><strong className="text-[#F4EDE2]">5-Tier Reliability Hierarchy:</strong> From Tier 1 (Oral Recollection) to Tier 5 (Official Vital Record Certificate).</span>
             </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
-              <span>Superseding an assertion preserves full historical provenance rather than destructive overwrites.</span>
+            <li className="flex items-start gap-3">
+              <CheckCircle2 className="w-4 h-4 text-[#85C49F] shrink-0 mt-0.5" />
+              <span><strong className="text-[#F4EDE2]">Non-Destructive Supersession:</strong> New evidence supersedes older claims while preserving complete provenance in the immutable audit log.</span>
             </li>
           </ul>
         </div>
 
         {/* Pillar 2: Ancestor Closure Table & DAG Validation */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-4 hover:border-slate-700 transition-all shadow-md">
-          <div className="w-10 h-10 rounded-xl bg-emerald-950/80 border border-emerald-800/60 flex items-center justify-center text-emerald-400">
-            <Network className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-slate-100">
-              2. Fast Transitive Ancestor Closure ($O(1)$)
+        <div className="deco-card bg-[#15191E] border-2 border-[#D4AF37]/30 rounded-sm p-8 space-y-5 shadow-lg relative">
+          <div className="flex items-center justify-between border-b border-[#D4AF37]/20 pb-4">
+            <h3 className="text-lg font-display font-bold text-[#F4EDE2] flex items-center gap-3 uppercase tracking-wider">
+              <Workflow className="w-5 h-5 text-[#85C49F]" />
+              <span>2. Transitive Closure Indexing ($O(1)$)</span>
             </h3>
-            <p className="text-xs font-mono text-emerald-400 mt-0.5">
-              table: ancestor_closure & parent_child
-            </p>
+            <span className="text-[10px] font-mono text-[#85C49F] bg-[#101317] px-2 py-0.5 rounded-sm border border-[#2B333C]">
+              table: ancestor_closure
+            </span>
           </div>
-          <p className="text-sm text-slate-300 leading-relaxed">
-            Recursive SQL CTEs degrade rapidly across deep genealogical lineages. FamilyGraph maintains an indexed transitive closure table storing <code>(descendant_id, ancestor_id, generations)</code>.
+
+          <p className="text-xs font-serif text-[#C4B59D] leading-relaxed italic text-[14px]">
+            Recursive SQL Common Table Expressions degrade exponentially across deep genealogical branches. FamilyGraph maintains an indexed transitive closure index storing <code>(descendant_id, ancestor_id, min_generations)</code>.
           </p>
-          <ul className="space-y-2 text-xs text-slate-400">
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-              <span><strong>DAG Cycle Prevention:</strong> BFS graph traversal blocks any relationship where a person would become their own ancestor.</span>
+
+          <ul className="space-y-3 text-xs font-serif text-[#A69B8D]">
+            <li className="flex items-start gap-3">
+              <CheckCircle2 className="w-4 h-4 text-[#85C49F] shrink-0 mt-0.5" />
+              <span><strong className="text-[#F4EDE2]">DAG Cycle Invariant:</strong> BFS graph traversal strictly prohibits any relationship edge that would cause an individual to become their own ancestor.</span>
             </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-              <span><strong>Incremental Updates:</strong> Modifying an edge only recomputes affected downstream subtrees.</span>
+            <li className="flex items-start gap-3">
+              <CheckCircle2 className="w-4 h-4 text-[#85C49F] shrink-0 mt-0.5" />
+              <span><strong className="text-[#F4EDE2]">Incremental Recomputation:</strong> Relationship updates re-index only the affected downstream subtrees without full database scans.</span>
             </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-              <span><strong>Pedigree Collapse Handling:</strong> Accurately resolves cousin marriages by finding the minimum generation path.</span>
+            <li className="flex items-start gap-3">
+              <CheckCircle2 className="w-4 h-4 text-[#85C49F] shrink-0 mt-0.5" />
+              <span><strong className="text-[#F4EDE2]">Pedigree Collapse:</strong> Correctly tracks multiple generational pathways resulting from consanguineous marriages.</span>
             </li>
           </ul>
         </div>
 
         {/* Pillar 3: Multi-Factor Duplicate Resolution */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-4 hover:border-slate-700 transition-all shadow-md">
-          <div className="w-10 h-10 rounded-xl bg-blue-950/80 border border-blue-800/60 flex items-center justify-center text-blue-400">
-            <GitMerge className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-slate-100">
-              3. Phonetic Soundex & Duplicate Resolution
+        <div className="deco-card bg-[#15191E] border-2 border-[#D4AF37]/30 rounded-sm p-8 space-y-5 shadow-lg relative">
+          <div className="flex items-center justify-between border-b border-[#D4AF37]/20 pb-4">
+            <h3 className="text-lg font-display font-bold text-[#F4EDE2] flex items-center gap-3 uppercase tracking-wider">
+              <GitMerge className="w-5 h-5 text-[#8DB4DB]" />
+              <span>3. Phonetic Soundex & Merge Engine</span>
             </h3>
-            <p className="text-xs font-mono text-blue-400 mt-0.5">
+            <span className="text-[10px] font-mono text-[#8DB4DB] bg-[#101317] px-2 py-0.5 rounded-sm border border-[#2B333C]">
               table: match_candidate
-            </p>
+            </span>
           </div>
-          <p className="text-sm text-slate-300 leading-relaxed">
-            Identifies potential duplicate individuals across trees using a 2-stage pipeline to avoid $O(N^2)$ exhaustive comparisons.
+
+          <p className="text-xs font-serif text-[#C4B59D] leading-relaxed italic text-[14px]">
+            Employs a 2-stage reconciliation pipeline to discover duplicate records across trees without exhaustive $O(N^2)$ comparisons.
           </p>
-          <ul className="space-y-2 text-xs text-slate-400">
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-              <span><strong>Candidate Blocking:</strong> Filters candidate pairs using Soundex phonetic surname keys + birth decade windows.</span>
+
+          <ul className="space-y-3 text-xs font-serif text-[#A69B8D]">
+            <li className="flex items-start gap-3">
+              <CheckCircle2 className="w-4 h-4 text-[#85C49F] shrink-0 mt-0.5" />
+              <span><strong className="text-[#F4EDE2]">Soundex Candidate Blocking:</strong> Indexes surnames into phonetic equivalence bins combined with birth decade windows.</span>
             </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-              <span><strong>Composite Scoring:</strong> Evaluates Levenshtein edit distance, birth place tokens, and parent/spouse overlap.</span>
+            <li className="flex items-start gap-3">
+              <CheckCircle2 className="w-4 h-4 text-[#85C49F] shrink-0 mt-0.5" />
+              <span><strong className="text-[#F4EDE2]">Multi-Factor Composite Score:</strong> Evaluates Levenshtein edit distance, geographic proximity, and kinship overlap.</span>
             </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-              <span><strong>Non-Destructive Merging:</strong> Sets <code>merged_into</code> pointing to the canonical record with full unmerge/revert capability.</span>
+            <li className="flex items-start gap-3">
+              <CheckCircle2 className="w-4 h-4 text-[#85C49F] shrink-0 mt-0.5" />
+              <span><strong className="text-[#F4EDE2]">Reversible Merging:</strong> Sets <code>merged_into</code> on secondary records with instant unmerge restoration capabilities.</span>
             </li>
           </ul>
         </div>
 
         {/* Pillar 4: Zero-Information-Leak Living Privacy */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-4 hover:border-slate-700 transition-all shadow-md">
-          <div className="w-10 h-10 rounded-xl bg-amber-950/80 border border-amber-800/60 flex items-center justify-center text-amber-400">
-            <Lock className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-slate-100">
-              4. Zero-Information-Leak Privacy & Discovery
+        <div className="deco-card bg-[#15191E] border-2 border-[#D4AF37]/30 rounded-sm p-8 space-y-5 shadow-lg relative">
+          <div className="flex items-center justify-between border-b border-[#D4AF37]/20 pb-4">
+            <h3 className="text-lg font-display font-bold text-[#F4EDE2] flex items-center gap-3 uppercase tracking-wider">
+              <Lock className="w-5 h-5 text-[#D4AF37]" />
+              <span>4. Zero-Leak Living Privacy Protocol</span>
             </h3>
-            <p className="text-xs font-mono text-amber-400 mt-0.5">
-              privacy_level: 'family_only' | 'public'
-            </p>
+            <span className="text-[10px] font-mono text-[#D4AF37] bg-[#101317] px-2 py-0.5 rounded-sm border border-[#2B333C]">
+              table: user_consent
+            </span>
           </div>
-          <p className="text-sm text-slate-300 leading-relaxed">
-            Protects living individuals while empowering researchers to connect across tree boundaries through strict cryptographic privacy standards.
-          </p>
-          <ul className="space-y-2 text-xs text-slate-400">
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-              <span><strong>Living Default:</strong> Any person with <code>is_living = true</code> defaults to <code>family_only</code>.</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-              <span><strong>Bilateral Opt-In:</strong> Relative discovery requires mutual opt-in from both the searching user and the tree owner.</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-              <span><strong>Zero Leakage:</strong> If either party hasn't opted in, the candidate is completely dropped with no "hidden match" placeholder.</span>
-            </li>
-          </ul>
-        </div>
 
-        {/* Pillar 5: Granular Tree RBAC */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-4 hover:border-slate-700 transition-all shadow-md">
-          <div className="w-10 h-10 rounded-xl bg-indigo-950/80 border border-indigo-800/60 flex items-center justify-center text-indigo-400">
-            <Users className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-slate-100">
-              5. Per-Tree Role-Based Access Control (RBAC)
-            </h3>
-            <p className="text-xs font-mono text-indigo-400 mt-0.5">
-              roles: 'owner' | 'editor' | 'viewer'
-            </p>
-          </div>
-          <p className="text-sm text-slate-300 leading-relaxed">
-            Multi-user collaboration with strict role boundaries enforced across every API mutation route:
+          <p className="text-xs font-serif text-[#C4B59D] leading-relaxed italic text-[14px]">
+            Safeguards the privacy of living individuals while allowing consenting genealogical researchers to discover mutual family connections.
           </p>
-          <ul className="space-y-2 text-xs text-slate-400">
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-              <span><strong>Owner:</strong> Full control over tree metadata, member management, and role promotion.</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-              <span><strong>Editor:</strong> Can add claims, mutate parent-child relationships, confirm duplicate merges, and attach media.</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-              <span><strong>Viewer:</strong> Read-only access to tree nodes and non-living public profiles.</span>
-            </li>
-          </ul>
-        </div>
 
-        {/* Pillar 6: Immutable Audit Trail & Cryptographic Media */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-4 hover:border-slate-700 transition-all shadow-md">
-          <div className="w-10 h-10 rounded-xl bg-rose-950/80 border border-rose-800/60 flex items-center justify-center text-rose-400">
-            <History className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-slate-100">
-              6. Immutable Audit Trail & SHA-256 Provenance
-            </h3>
-            <p className="text-xs font-mono text-rose-400 mt-0.5">
-              tables: audit_log & person_media
-            </p>
-          </div>
-          <p className="text-sm text-slate-300 leading-relaxed">
-            Complete compliance and data integrity tracking for every tree operation:
-          </p>
-          <ul className="space-y-2 text-xs text-slate-400">
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-              <span><strong>Audit Trail:</strong> Records <code>entity_type</code>, <code>entity_id</code>, <code>action</code>, <code>old_value</code>, <code>new_value</code>, <code>changed_by</code>, and <code>changed_at</code>.</span>
+          <ul className="space-y-3 text-xs font-serif text-[#A69B8D]">
+            <li className="flex items-start gap-3">
+              <CheckCircle2 className="w-4 h-4 text-[#85C49F] shrink-0 mt-0.5" />
+              <span><strong className="text-[#F4EDE2]">Dual-Consent Handshake:</strong> Living individuals are only cross-referenced when both repository curators grant explicit opt-in consent.</span>
             </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-              <span><strong>Media Provenance:</strong> Every photo, census record, and certificate computes a SHA-256 hash verified on client and server.</span>
+            <li className="flex items-start gap-3">
+              <CheckCircle2 className="w-4 h-4 text-[#85C49F] shrink-0 mt-0.5" />
+              <span><strong className="text-[#F4EDE2]">Zero Metadata Leakage:</strong> Non-consenting queries return completely empty responses without revealing silhouette counts or existence hints.</span>
             </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-              <span><strong>Audit Inspector:</strong> Admin page provides side-by-side JSON diffs of historical state mutations.</span>
+            <li className="flex items-start gap-3">
+              <CheckCircle2 className="w-4 h-4 text-[#85C49F] shrink-0 mt-0.5" />
+              <span><strong className="text-[#F4EDE2]">Multi-Tenant RBAC:</strong> Strict boundary isolation between Tree Owners, Editors, and Viewers.</span>
             </li>
           </ul>
         </div>
       </div>
 
-      {/* Interactive Flow Summary */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 border border-slate-800 rounded-3xl p-8 space-y-6">
-        <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-          <Cpu className="w-5 h-5 text-indigo-400" />
-          Full System Data Flow
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
-          <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-2">
-            <span className="font-mono text-indigo-400 font-bold block">STEP 1: INGESTION</span>
-            <p className="text-slate-300 font-medium">Claims & Sources</p>
-            <p className="text-slate-500">
-              Users assert claims with reliability citations and media attachments tagged with SHA-256 hashes.
-            </p>
+      {/* Cryptographic SHA-256 Provenance Monograph */}
+      <div className="deco-card bg-[#15191E] border-2 border-[#D4AF37] rounded-sm p-8 sm:p-10 space-y-4 shadow-[0_4px_30px_rgba(0,0,0,0.7)] relative overflow-hidden">
+        <div className="flex items-center gap-3 border-b border-[#D4AF37]/30 pb-4">
+          <div className="w-10 h-10 rounded-sm border border-[#D4AF37] bg-[#120F0B] flex items-center justify-center text-[#D4AF37]">
+            <ShieldCheck className="w-6 h-6 text-[#85C49F]" />
           </div>
-
-          <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-2">
-            <span className="font-mono text-emerald-400 font-bold block">STEP 2: TOPOLOGY</span>
-            <p className="text-slate-300 font-medium">DAG & Closure Index</p>
-            <p className="text-slate-500">
-              Cycle detection runs during linking; closure table updates incrementally for instant relationship querying.
-            </p>
-          </div>
-
-          <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-2">
-            <span className="font-mono text-blue-400 font-bold block">STEP 3: MATCHING</span>
-            <p className="text-slate-300 font-medium">Duplicate Resolution</p>
-            <p className="text-slate-500">
-              Phonetic Soundex blocking screens candidate pairs; multi-factor weights score similarities.
-            </p>
-          </div>
-
-          <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-2">
-            <span className="font-mono text-rose-400 font-bold block">STEP 4: GOVERNANCE</span>
-            <p className="text-slate-300 font-medium">Audit & Privacy</p>
-            <p className="text-slate-500">
-              Bilateral discovery consent gates living records; all mutations record immutable audit diffs.
-            </p>
+          <div>
+            <div className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-widest">PROVENANCE INTEGRITY ANCHOR</div>
+            <h3 className="text-xl font-display font-bold text-[#F4EDE2] uppercase tracking-wider">
+              Cryptographic SHA-256 Primary Source Verification
+            </h3>
           </div>
         </div>
+
+        <p className="text-sm font-serif text-[#C4B59D] leading-relaxed italic">
+          Every archival document uploaded to FamilyGraph — whether high-resolution census schedules, parish registers, civil vital certificates, or familial portraits — is processed through the browser Web Crypto API to generate a canonical SHA-256 cryptographic digest prior to persistent database anchoring. This immutable checksum guarantees permanent bit-level authenticity against alteration, loss of fidelity, or unauthorized document tampering.
+        </p>
       </div>
     </div>
   );

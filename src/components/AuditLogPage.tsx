@@ -22,8 +22,11 @@ import {
   XCircle,
   AlertCircle,
   FolderGit2,
+  Scroll,
+  BookOpen,
 } from 'lucide-react';
 import { AuditLogRecord } from '../types.ts';
+import { motion } from 'motion/react';
 
 export const AuditLogPage: React.FC = () => {
   const { getAuthHeaders, user } = useAuth();
@@ -71,13 +74,12 @@ export const AuditLogPage: React.FC = () => {
       setLogs(data.logs || []);
       setTotal(data.total || 0);
 
-      // Compute stats
       if (data.stats) {
         setStats(data.stats);
       }
     } catch (err: any) {
       console.error('Error fetching audit logs:', err);
-      setError(err.message || 'Failed to load audit logs.');
+      setError(err.message || 'Failed to load institutional audit ledger.');
     } finally {
       setIsLoading(false);
     }
@@ -97,49 +99,33 @@ export const AuditLogPage: React.FC = () => {
     switch (action) {
       case 'insert':
       case 'create':
-        return { label: 'INSERT', bg: 'bg-emerald-950/80 text-emerald-300 border-emerald-800/60' };
+        return { label: 'INSERT', style: 'border-[#4C7A5E] bg-[#162A1F] text-[#85C49F]' };
       case 'supersede':
-        return { label: 'SUPERSEDE', bg: 'bg-purple-950/80 text-purple-300 border-purple-800/60' };
+        return { label: 'SUPERSEDE', style: 'border-[#3F648A] bg-[#142332] text-[#8DB4DB]' };
       case 'merge':
-        return { label: 'MERGE', bg: 'bg-blue-950/80 text-blue-300 border-blue-800/60' };
+        return { label: 'MERGE', style: 'border-[#D4AF37] bg-[#1A1813] text-[#D4AF37]' };
       case 'delete':
-        return { label: 'DELETE', bg: 'bg-rose-950/80 text-rose-300 border-rose-800/60' };
+        return { label: 'DELETE', style: 'border-[#9C4A3C] bg-[#2A1513] text-[#EBB4AC]' };
       case 'update':
       default:
-        return { label: 'UPDATE', bg: 'bg-amber-950/80 text-amber-300 border-amber-800/60' };
-    }
-  };
-
-  const getEntityIcon = (entityType: string) => {
-    switch (entityType) {
-      case 'person_claim':
-        return <FileText className="w-4 h-4 text-purple-400" />;
-      case 'parent_child':
-      case 'partnership':
-        return <Link className="w-4 h-4 text-emerald-400" />;
-      case 'match_candidate':
-        return <Users className="w-4 h-4 text-blue-400" />;
-      case 'person_media':
-        return <FolderGit2 className="w-4 h-4 text-amber-400" />;
-      default:
-        return <Database className="w-4 h-4 text-slate-400" />;
+        return { label: 'UPDATE', style: 'border-[#2B333C] bg-[#101317] text-[#F4EDE2]' };
     }
   };
 
   const formatEntityTitle = (type: string) => {
     switch (type) {
       case 'person_claim':
-        return 'Person Claim';
+        return 'Person Sourced Claim';
       case 'parent_child':
-        return 'Parent-Child Edge';
+        return 'Parent-Child Kinship Edge';
       case 'partnership':
-        return 'Partnership Edge';
+        return 'Spousal Partnership Edge';
       case 'match_candidate':
-        return 'Duplicate Candidate';
+        return 'Duplicate Reconciliation Dossier';
       case 'person_media':
-        return 'Media Document';
+        return 'Primary Archival Media';
       case 'person':
-        return 'Person Record';
+        return 'Person Record Entity';
       default:
         return type;
     }
@@ -147,29 +133,30 @@ export const AuditLogPage: React.FC = () => {
 
   const renderJsonDiff = (oldVal: any, newVal: any) => {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-800 text-xs">
-        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
-          <span className="text-[11px] font-semibold text-rose-400 uppercase tracking-wider block mb-1">
-            Previous State (old_value)
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-[#D4AF37]/20 text-xs font-sans">
+        <div className="bg-[#101317] p-4 rounded-sm border border-[#2B333C]">
+          <span className="text-[10px] font-mono font-bold text-[#EBB4AC] uppercase tracking-widest block mb-2">
+            PREVIOUS STATE (OLD_VALUE)
           </span>
           {oldVal ? (
-            <pre className="font-mono text-[11px] text-slate-300 whitespace-pre-wrap overflow-x-auto">
+            <pre className="font-mono text-[11px] text-[#A69B8D] whitespace-pre-wrap overflow-x-auto leading-relaxed">
               {JSON.stringify(oldVal, null, 2)}
             </pre>
           ) : (
-            <span className="text-slate-500 italic">null (Record did not exist)</span>
+            <span className="text-[#64707D] italic font-serif text-xs">Record did not exist prior to this event.</span>
           )}
         </div>
-        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
-          <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider block mb-1">
-            New State (new_value)
+
+        <div className="bg-[#101317] p-4 rounded-sm border border-[#2B333C]">
+          <span className="text-[10px] font-mono font-bold text-[#85C49F] uppercase tracking-widest block mb-2">
+            RESULTING STATE (NEW_VALUE)
           </span>
           {newVal ? (
-            <pre className="font-mono text-[11px] text-slate-300 whitespace-pre-wrap overflow-x-auto">
+            <pre className="font-mono text-[11px] text-[#F4EDE2] whitespace-pre-wrap overflow-x-auto leading-relaxed">
               {JSON.stringify(newVal, null, 2)}
             </pre>
           ) : (
-            <span className="text-slate-500 italic">null (Record was deleted)</span>
+            <span className="text-[#64707D] italic font-serif text-xs">Record deleted or expunged from database.</span>
           )}
         </div>
       </div>
@@ -179,265 +166,217 @@ export const AuditLogPage: React.FC = () => {
   const totalPages = Math.ceil(total / pageSize);
 
   return (
-    <div id="audit_log_page" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div id="audit_ledger_page" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 font-sans">
+      {/* Art Deco Marquee Header */}
+      <div className="relative border-b-2 border-[#D4AF37]/30 pb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-1 rounded-lg bg-indigo-950/80 border border-indigo-800 text-indigo-300 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
-              <Shield className="w-3.5 h-3.5" />
-              Administrative Audit
+          <div className="flex items-center gap-2 mb-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#1A1813] border border-[#D4AF37]/40 text-[#D4AF37] text-[10px] font-mono uppercase tracking-[0.2em]">
+              <span className="w-1.5 h-1.5 bg-[#D4AF37] rotate-45"></span>
+              IMMUTABLE CHRONOLOGY & PROVENANCE • FOLIO № 400
             </span>
-            <span className="text-xs text-slate-500 font-mono">table: audit_log</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-100 mt-1">
-            System Audit & Mutation Trail
+          <h1 className="text-3xl sm:text-4xl font-display font-bold text-[#F4EDE2] tracking-tight uppercase">
+            Institutional Audit Ledger
           </h1>
-          <p className="text-sm text-slate-400">
-            Immutable log recording every insert, update, supersession, merge, and deletion across claims, relationships, and candidate merges.
+          <p className="text-sm font-serif text-[#C4B59D] mt-1.5 max-w-2xl leading-relaxed italic">
+            Cryptographically verifiable accession journal recording every evidentiary assertion insertion, claim supersession, identity merge, and kinship tree transformation.
           </p>
         </div>
 
         <button
-          onClick={() => {
-            setPage(0);
-            fetchLogs();
-          }}
-          disabled={isLoading}
-          className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium transition-colors flex items-center gap-2 border border-slate-700 shadow-sm shrink-0 self-start md:self-auto"
+          id="refresh_audit_ledger_btn"
+          onClick={fetchLogs}
+          className="inline-flex items-center gap-2.5 bg-[#15191E] hover:bg-[#1C222A] text-[#F4EDE2] border border-[#D4AF37]/40 px-5 py-2.5 rounded-sm text-xs font-display uppercase tracking-wider transition-colors shadow-sm shrink-0"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh Log
+          <RefreshCw className={`w-3.5 h-3.5 text-[#D4AF37] ${isLoading ? 'animate-spin' : ''}`} />
+          <span>Refresh Ledger</span>
         </button>
       </div>
 
-      {/* Summary KPI Cards */}
+      {/* Ledger Metrics Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
-          <span className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
-            <Layers className="w-4 h-4 text-indigo-400" />
-            Total Recorded Events
-          </span>
-          <p className="text-2xl font-bold text-slate-100 mt-1">{total}</p>
+        <div className="deco-card bg-[#15191E] border border-[#D4AF37]/30 p-5 rounded-sm space-y-1.5">
+          <div className="text-[10px] uppercase font-mono text-[#8C8275] tracking-wider">Sourced Claims</div>
+          <div className="text-2xl font-display font-bold text-[#F4EDE2]">
+            {stats.totalClaims || '—'}
+          </div>
         </div>
 
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
-          <span className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
-            <FileText className="w-4 h-4 text-purple-400" />
-            Claim Mutations
-          </span>
-          <p className="text-2xl font-bold text-purple-300 mt-1">{stats.totalClaims || 0}</p>
+        <div className="deco-card bg-[#15191E] border border-[#D4AF37]/30 p-5 rounded-sm space-y-1.5">
+          <div className="text-[10px] uppercase font-mono text-[#8C8275] tracking-wider">Kinship Edges</div>
+          <div className="text-2xl font-display font-bold text-[#F4EDE2]">
+            {stats.totalRelationships || '—'}
+          </div>
         </div>
 
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
-          <span className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
-            <Link className="w-4 h-4 text-emerald-400" />
-            Graph Edge Updates
-          </span>
-          <p className="text-2xl font-bold text-emerald-300 mt-1">{stats.totalRelationships || 0}</p>
+        <div className="deco-card bg-[#15191E] border border-[#D4AF37]/30 p-5 rounded-sm space-y-1.5">
+          <div className="text-[10px] uppercase font-mono text-[#8C8275] tracking-wider">Reconciled Merges</div>
+          <div className="text-2xl font-display font-bold text-[#D4AF37]">
+            {stats.totalMerges || '0'}
+          </div>
         </div>
 
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
-          <span className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
-            <Users className="w-4 h-4 text-blue-400" />
-            Candidate Merges
-          </span>
-          <p className="text-2xl font-bold text-blue-300 mt-1">{stats.totalMerges || 0}</p>
-        </div>
-      </div>
-
-      {/* Filter Bar */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-md space-y-3">
-        <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
-          <form onSubmit={handleSearchSubmit} className="relative flex-1 w-full">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by entity ID, user UID/email, or data values..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-            />
-          </form>
-
-          <div className="flex flex-wrap gap-2 w-full md:w-auto">
-            {/* Entity Type Filter */}
-            <select
-              value={entityFilter}
-              onChange={(e) => {
-                setEntityFilter(e.target.value);
-                setPage(0);
-              }}
-              className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-            >
-              <option value="all">All Entity Types</option>
-              <option value="person_claim">person_claim (Claims)</option>
-              <option value="parent_child">parent_child (Lineage Edges)</option>
-              <option value="partnership">partnership (Spousal Edges)</option>
-              <option value="match_candidate">match_candidate (Merges)</option>
-              <option value="person_media">person_media (Media Files)</option>
-              <option value="person">person (Profiles)</option>
-            </select>
-
-            {/* Action Filter */}
-            <select
-              value={actionFilter}
-              onChange={(e) => {
-                setActionFilter(e.target.value);
-                setPage(0);
-              }}
-              className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-            >
-              <option value="all">All Actions</option>
-              <option value="insert">INSERT (Create)</option>
-              <option value="update">UPDATE</option>
-              <option value="supersede">SUPERSEDE</option>
-              <option value="merge">MERGE</option>
-              <option value="delete">DELETE</option>
-            </select>
+        <div className="deco-card bg-[#15191E] border border-[#D4AF37]/30 p-5 rounded-sm space-y-1.5">
+          <div className="text-[10px] uppercase font-mono text-[#8C8275] tracking-wider">Archival Documents</div>
+          <div className="text-2xl font-display font-bold text-[#85C49F]">
+            {stats.totalMedia || '0'}
           </div>
         </div>
       </div>
 
-      {/* Audit Log Stream */}
-      {error && (
-        <div className="p-4 bg-red-950/60 border border-red-800/60 rounded-xl text-red-300 text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
-          <span>{error}</span>
-        </div>
-      )}
+      {/* Filter Toolbar */}
+      <div className="deco-card p-4 space-y-3 bg-[#15191E] border border-[#D4AF37]/30 rounded-sm">
+        <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-[#8C8275] absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search audit journal by entity UUID, curator persona ID, or reason..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-[#101317] border border-[#D4AF37]/30 rounded-sm text-xs text-[#F4EDE2] placeholder:text-[#64707D] focus:outline-none focus:border-[#D4AF37]"
+            />
+          </div>
 
-      {isLoading ? (
-        <div className="py-16 text-center space-y-3">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto text-indigo-400" />
-          <p className="text-sm text-slate-400">Loading audit log entries from Cloud SQL...</p>
-        </div>
-      ) : logs.length === 0 ? (
-        <div className="py-16 text-center bg-slate-900/40 border border-dashed border-slate-800 rounded-2xl space-y-2">
-          <History className="w-10 h-10 mx-auto text-slate-600" />
-          <p className="text-sm text-slate-300 font-medium">No audit entries found</p>
-          <p className="text-xs text-slate-500">
-            {searchQuery || entityFilter !== 'all' || actionFilter !== 'all'
-              ? 'Try relaxing your filters or search query.'
-              : 'As data is added or modified in the tree, audit entries will be recorded here.'}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {logs.map((log) => {
-            const actionBadge = getActionBadge(log.action);
-            const isExpanded = expandedLogId === log.logId;
-
-            return (
-              <div
-                key={log.logId}
-                className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl p-4 transition-all"
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            <div className="flex items-center gap-2 bg-[#101317] border border-[#D4AF37]/30 px-3 py-2 rounded-sm">
+              <span className="text-[#8C8275] font-mono text-[10px] uppercase">Entity:</span>
+              <select
+                value={entityFilter}
+                onChange={(e) => {
+                  setEntityFilter(e.target.value);
+                  setPage(0);
+                }}
+                className="bg-transparent text-[#F4EDE2] font-mono text-xs focus:outline-none cursor-pointer pr-1"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <span
-                      className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-bold border ${actionBadge.bg}`}
-                    >
-                      {actionBadge.label}
-                    </span>
+                <option value="all" className="bg-[#15191E]">All Entities</option>
+                <option value="person_claim" className="bg-[#15191E]">Evidentiary Claims</option>
+                <option value="parent_child" className="bg-[#15191E]">Parent-Child Edges</option>
+                <option value="partnership" className="bg-[#15191E]">Partnership Edges</option>
+                <option value="match_candidate" className="bg-[#15191E]">Duplicate Candidates</option>
+                <option value="person_media" className="bg-[#15191E]">Archival Documents</option>
+              </select>
+            </div>
 
-                    <span className="flex items-center gap-1.5 text-xs font-medium text-slate-300 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
-                      {getEntityIcon(log.entityType)}
-                      <span className="font-mono text-[11px] text-slate-400">{log.entityType}</span>
-                    </span>
+            <div className="flex items-center gap-2 bg-[#101317] border border-[#D4AF37]/30 px-3 py-2 rounded-sm">
+              <span className="text-[#8C8275] font-mono text-[10px] uppercase">Action:</span>
+              <select
+                value={actionFilter}
+                onChange={(e) => {
+                  setActionFilter(e.target.value);
+                  setPage(0);
+                }}
+                className="bg-transparent text-[#F4EDE2] font-mono text-xs focus:outline-none cursor-pointer pr-1"
+              >
+                <option value="all" className="bg-[#15191E]">All Actions</option>
+                <option value="insert" className="bg-[#15191E]">Insert</option>
+                <option value="supersede" className="bg-[#15191E]">Supersede</option>
+                <option value="merge" className="bg-[#15191E]">Merge</option>
+                <option value="delete" className="bg-[#15191E]">Delete</option>
+              </select>
+            </div>
+          </div>
+        </form>
+      </div>
 
-                    <span className="text-xs text-slate-400 font-mono">
-                      ID: <span className="text-slate-300 font-semibold">{log.entityId}</span>
-                    </span>
-                  </div>
+      {/* Audit Log Ledger Table */}
+      <div className="deco-card border-2 border-[#D4AF37]/30 bg-[#15191E] rounded-sm overflow-hidden shadow-lg">
+        {isLoading ? (
+          <div className="py-24 text-center space-y-4">
+            <div className="w-10 h-10 rounded-sm border-2 border-[#D4AF37]/30 border-t-[#D4AF37] animate-spin mx-auto"></div>
+            <p className="text-xs font-mono text-[#C4B59D] uppercase tracking-widest">
+              Extracting immutable journal entries from cryptographic ledger...
+            </p>
+          </div>
+        ) : error ? (
+          <div className="p-8 text-center text-xs text-[#EBB4AC] bg-[#2A1513]">
+            {error}
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="p-16 text-center text-xs font-serif text-[#8C8275]">
+            No audit ledger entries match the selected filter parameters.
+          </div>
+        ) : (
+          <div className="divide-y divide-[#2B333C]">
+            {logs.map((log) => {
+              const badge = getActionBadge(log.action);
+              const isExpanded = expandedLogId === log.logId;
 
-                  <div className="flex items-center gap-3 text-xs text-slate-400">
-                    <span className="flex items-center gap-1">
-                      <User className="w-3.5 h-3.5 text-slate-500" />
-                      <span className="font-mono text-[11px] text-indigo-300">{log.changedBy}</span>
-                    </span>
-                    <span className="flex items-center gap-1 text-slate-500">
-                      <Clock className="w-3.5 h-3.5" />
-                      {log.changedAt ? new Date(log.changedAt).toLocaleString() : ''}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Quick Summary or Toggle Details */}
-                <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between">
-                  <div className="text-xs text-slate-400 flex items-center gap-2 truncate max-w-xl">
-                    {log.action === 'supersede' && (
-                      <span className="text-purple-300">
-                        Claim marked superseded by higher confidence/priority claim
-                      </span>
-                    )}
-                    {log.action === 'merge' && (
-                      <span className="text-blue-300">
-                        Duplicate candidate merged into canonical record
-                      </span>
-                    )}
-                    {log.action === 'insert' && (
-                      <span className="text-emerald-300">
-                        New {formatEntityTitle(log.entityType)} established
-                      </span>
-                    )}
-                    {log.action === 'delete' && (
-                      <span className="text-rose-300">
-                        {formatEntityTitle(log.entityType)} removed from graph
-                      </span>
-                    )}
-                    {log.action === 'update' && (
-                      <span className="text-amber-300">
-                        Record state updated
-                      </span>
-                    )}
-                  </div>
-
-                  <button
+              return (
+                <div
+                  key={log.logId}
+                  id={`audit_log_row_${log.logId}`}
+                  className="p-5 hover:bg-[#1A1F26] transition-colors"
+                >
+                  <div
                     onClick={() => setExpandedLogId(isExpanded ? null : log.logId)}
-                    className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium shrink-0 ml-2"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer"
                   >
-                    <Code className="w-3.5 h-3.5" />
-                    {isExpanded ? 'Hide Payload Diff' : 'View Payload Diff'}
-                  </button>
+                    <div className="flex items-center gap-4">
+                      <span className={`text-[10px] font-mono uppercase px-2.5 py-1 rounded-sm border font-bold tracking-wider ${badge.style}`}>
+                        {badge.label}
+                      </span>
+
+                      <div>
+                        <div className="font-display font-bold text-sm text-[#F4EDE2]">
+                          {formatEntityTitle(log.entityType)}
+                        </div>
+                        <div className="text-[10px] text-[#8C8275] font-mono">
+                          REGISTRY UUID: {log.entityId.slice(0, 18).toUpperCase()}...
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-6 text-xs font-mono text-[#A69B8D]">
+                      <div className="text-right">
+                        <div className="text-[#F4EDE2]">Curator: {log.actorId.replace('user-', '')}</div>
+                        <div className="text-[10px] text-[#8C8275]">
+                          {new Date(log.timestamp).toLocaleString(undefined, {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          })}
+                        </div>
+                      </div>
+                      <span className="text-xs font-display uppercase tracking-wider text-[#D4AF37] px-2 py-1 bg-[#101317] border border-[#D4AF37]/30 rounded-sm">
+                        {isExpanded ? 'Collapse Diff' : 'Examine Diff'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Expanded JSON State Diff */}
+                  {isExpanded && renderJsonDiff(log.oldValue, log.newValue)}
                 </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-                {/* Expanded Snapshot Inspector */}
-                {isExpanded && renderJsonDiff(log.oldValue, log.newValue)}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Pagination Footer */}
+      {/* Pagination Bar */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-4 border-t border-slate-800">
-          <p className="text-xs text-slate-400">
-            Showing <span className="font-medium text-slate-200">{page * pageSize + 1}</span> to{' '}
-            <span className="font-medium text-slate-200">
-              {Math.min((page + 1) * pageSize, total)}
-            </span>{' '}
-            of <span className="font-medium text-slate-200">{total}</span> audit records
-          </p>
+        <div className="flex items-center justify-between text-xs text-[#A69B8D] font-mono">
+          <div>
+            Showing entries {page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} of {total} in ledger
+          </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0 || isLoading}
-              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              disabled={page === 0}
+              className="p-2 border border-[#D4AF37]/30 rounded-sm hover:bg-[#15191E] disabled:opacity-30 transition-colors"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4 text-[#D4AF37]" />
             </button>
-            <span className="text-xs text-slate-400 font-mono px-2">
-              Page {page + 1} of {totalPages}
+            <span className="px-3 font-display uppercase tracking-wider text-[#F4EDE2]">
+              Folio {page + 1} of {totalPages}
             </span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={page >= totalPages - 1 || isLoading}
-              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              disabled={page >= totalPages - 1}
+              className="p-2 border border-[#D4AF37]/30 rounded-sm hover:bg-[#15191E] disabled:opacity-30 transition-colors"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4 text-[#D4AF37]" />
             </button>
           </div>
         </div>

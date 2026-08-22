@@ -286,20 +286,27 @@ export interface RelationshipResult {
 }
 
 export type MatchBand = 'strong' | 'possible' | 'unlikely';
-export type MatchStatus = 'pending' | 'approved' | 'rejected';
+export type MatchStatus = 'pending' | 'approved' | 'rejected' | 'dismissed';
+
+export type MatchCandidateBand = MatchBand;
+export type MatchCandidateStatus = MatchStatus;
 
 export interface MatchScoreBreakdown {
-  nameSimilarity: number;
-  nameNotes: string;
-  birthProximity: number;
-  birthNotes: string;
-  birthplaceMatch: number;
-  birthplaceNotes: string;
-  familyResolution: number;
-  familyNotes: string;
-  totalScore: number;
-  band: MatchBand;
-  blockingKey: string;
+  nameSimilarity?: number;
+  nameNotes?: string;
+  birthProximity?: number;
+  birthNotes?: string;
+  birthplaceMatch?: number;
+  birthplaceNotes?: string;
+  familyResolution?: number;
+  familyNotes?: string;
+  totalScore?: number;
+  nameScore?: number;
+  birthScore?: number;
+  placeScore?: number;
+  relScore?: number;
+  band?: MatchBand;
+  blockingKey?: string;
 }
 
 export interface MatchCandidateRecord {
@@ -308,13 +315,18 @@ export interface MatchCandidateRecord {
   score: number;
   band: MatchBand;
   status: MatchStatus;
-  reviewedBy: string | null;
-  reviewedAt: string | null;
+  canonicalPersonId?: string | null;
+  decidedAt?: string | null;
+  decidedBy?: string | null;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
   breakdown: MatchScoreBreakdown | null;
   createdAt: string | null;
   personA?: PersonRecord & { displayName: string; birthDate?: string; birthPlace?: string };
   personB?: PersonRecord & { displayName: string; birthDate?: string; birthPlace?: string };
 }
+
+export type MatchCandidateWithDetails = MatchCandidateRecord;
 
 export type ActiveView =
   | 'landing'
