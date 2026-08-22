@@ -117,53 +117,8 @@ export async function getTreesForUser(userUid: string, userEmail?: string): Prom
     .where(eq(treeMember.userUid, userUid))
     .orderBy(desc(tree.createdAt));
 
-  const memberTreeIds = new Set(memberships.map((m) => m.treeId));
-
-  // Also query discoverable / public archival trees
-  const discoverableTrees = await db
-    .select({
-      treeId: tree.treeId,
-      name: tree.name,
-      description: tree.description,
-      ownerUid: tree.ownerUid,
-      isDiscoverable: tree.isDiscoverable,
-      createdAt: tree.createdAt,
-    })
-    .from(tree)
-    .where(eq(tree.isDiscoverable, true))
-    .orderBy(desc(tree.createdAt));
-
-  const combinedTrees: Array<{
-    treeId: string;
-    name: string;
-    description: string | null;
-    ownerUid: string;
-    isDiscoverable: boolean | null;
-    createdAt: Date | string | null;
-    role?: TreeRole;
-    userRole?: TreeRole;
-  }> = memberships.map((m) => ({
-    ...m,
-    role: m.role as TreeRole,
-    userRole: m.role as TreeRole,
-  }));
-
-  for (const dt of discoverableTrees) {
-    if (!memberTreeIds.has(dt.treeId)) {
-      combinedTrees.push({
-        treeId: dt.treeId,
-        name: dt.name,
-        description: dt.description,
-        ownerUid: dt.ownerUid,
-        isDiscoverable: dt.isDiscoverable,
-        createdAt: dt.createdAt,
-        userRole: 'viewer' as TreeRole,
-      });
-    }
-  }
-
   // Count persons per tree
-  const treeIds = combinedTrees.map((t) => t.treeId);
+  const treeIds = memberships.map((m) => m.treeId);
   const personCounts = new Map<string, number>();
 
   if (treeIds.length > 0) {
@@ -181,14 +136,14 @@ export async function getTreesForUser(userUid: string, userEmail?: string): Prom
     });
   }
 
-  return combinedTrees.map((m) => ({
+  return memberships.map((m) => ({
     treeId: m.treeId,
     name: m.name,
     description: m.description,
     ownerUid: m.ownerUid,
     isDiscoverable: m.isDiscoverable,
-    createdAt: m.createdAt instanceof Date ? m.createdAt.toISOString() : (typeof m.createdAt === 'string' ? m.createdAt : null),
-    userRole: ((m.userRole || m.role || 'viewer') as TreeRole),
+    createdAt: m.createdAt ? m.createdAt.toISOString() : null,
+    userRole: m.role as TreeRole,
     personCount: personCounts.get(m.treeId) || 0,
   }));
 }
@@ -218,7 +173,7 @@ export async function getTreeDetails(treeId: string, userUid: string) {
     .where(eq(treeMember.treeId, treeId));
 
   const userMembership = memberRows.find((m) => m.userUid === userUid);
-  const userRole = (userMembership?.role as TreeRole) || (currentTree.ownerUid === userUid ? 'owner' : (currentTree.isDiscoverable ? 'viewer' : null));
+  const userRole = (userMembership?.role as TreeRole) || (currentTree.ownerUid === userUid ? 'owner' : null);
 
   return {
     tree: {
@@ -420,24 +375,6 @@ export async function getUserRoleForPerson(
         isOwner: treeRole === 'owner',
         canEdit: treeRole === 'owner' || treeRole === 'editor',
         canView: true,
-      };
-    }
-
-    // Check if tree is discoverable
-    const treeRows = await db
-      .select({ isDiscoverable: tree.isDiscoverable })
-      .from(tree)
-      .where(eq(tree.treeId, p.treeId))
-      .limit(1);
-
-    if (treeRows[0]?.isDiscoverable) {
-      const canViewRecord = !p.isLiving || p.privacyLevel === 'public';
-      return {
-        role: 'viewer',
-        treeId: p.treeId,
-        isOwner: false,
-        canEdit: false,
-        canView: canViewRecord,
       };
     }
   }
