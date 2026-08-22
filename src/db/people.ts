@@ -136,19 +136,30 @@ export async function getPeopleForUser(userUid: string, includeMerged = false, f
       .from(treeMember)
       .where(eq(treeMember.userUid, userUid));
 
-    const accessibleTreeIds = memberships.map((m) => m.treeId);
+    const memberTreeIds = memberships.map((m) => m.treeId);
+
+    // 2. Find all discoverable / public archival trees
+    const discoverableTrees = await db
+      .select({ treeId: tree.treeId })
+      .from(tree)
+      .where(eq(tree.isDiscoverable, true));
+
+    const discoverableTreeIds = discoverableTrees.map((t) => t.treeId);
+    const allAccessibleTreeIds = Array.from(new Set([...memberTreeIds, ...discoverableTreeIds]));
 
     // If specific tree filter is passed
     let targetTreeCondition;
     if (filterTreeId) {
       targetTreeCondition = eq(person.treeId, filterTreeId);
-    } else if (accessibleTreeIds.length > 0) {
-      targetTreeCondition = or(
-        inArray(person.treeId, accessibleTreeIds),
-        eq(person.createdBy, userUid)
-      );
     } else {
-      targetTreeCondition = eq(person.createdBy, userUid);
+      const orClauses = [];
+      if (allAccessibleTreeIds.length > 0) {
+        orClauses.push(inArray(person.treeId, allAccessibleTreeIds));
+      }
+      orClauses.push(eq(person.createdBy, userUid));
+      orClauses.push(eq(person.privacyLevel, 'public'));
+
+      targetTreeCondition = orClauses.length === 1 ? orClauses[0] : or(...orClauses);
     }
 
     const whereConditions = includeMerged
@@ -161,9 +172,22 @@ export async function getPeopleForUser(userUid: string, includeMerged = false, f
       .where(whereConditions)
       .orderBy(desc(person.createdAt));
 
+    // Filter living private records if user does not have member or creator access
+    const memberTreeSet = new Set(memberTreeIds);
+    const visiblePeople = peopleList.filter((p) => {
+      // Deceased persons or public living persons are open archival records
+      if (!p.isLiving || p.privacyLevel === 'public') {
+        return true;
+      }
+      // Living person: user must be tree member or creator
+      if (p.createdBy === userUid) return true;
+      if (p.treeId && memberTreeSet.has(p.treeId)) return true;
+      return false;
+    });
+
     // Fetch claims with sources for each person
     const peopleWithClaims = await Promise.all(
-      peopleList.map(async (p) => {
+      visiblePeople.map(async (p) => {
         const claimsWithSources = await getClaimsForPerson(p.personId);
         return {
           ...p,

@@ -745,14 +745,8 @@ export async function getFamilyForPerson(personId: string) {
   return { parents, children, partnerships };
 }
 
-/**
- * Format ordinal number: 1 -> "1st", 2 -> "2nd", 3 -> "3rd", 4 -> "4th", etc.
- */
-export function formatOrdinal(n: number): string {
-  const s = ['th', 'st', 'nd', 'rd'];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
-}
+import { formatOrdinal } from '../utils/formatting.ts';
+export { formatOrdinal };
 
 /**
  * Computes the kinship relationship label from two generation distances:
