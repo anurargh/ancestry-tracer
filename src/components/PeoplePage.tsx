@@ -61,9 +61,9 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
   const [calcModalOpen, setCalcModalOpen] = useState<boolean>(false);
   const [calcInitialA, setCalcInitialA] = useState<string | null>(null);
 
-  const fetchPeopleAndTrees = async () => {
+  const fetchPeopleAndTrees = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       setError(null);
       const token = await getIdToken();
       if (!token) return;
@@ -82,7 +82,20 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
       }
 
       const peopleData = await peopleRes.json();
-      setPeople(peopleData.people || []);
+      const freshPeople = peopleData.people || [];
+
+      setPeople((prevPeople) => {
+        const prevMap = new Map<string, PersonRecord>(prevPeople.map((p) => [p.personId, p]));
+        return freshPeople.map((p: PersonRecord) => {
+          const prev = prevMap.get(p.personId);
+          return {
+            ...p,
+            parents: p.parents ?? prev?.parents,
+            children: p.children ?? prev?.children,
+            partnerships: p.partnerships ?? prev?.partnerships,
+          };
+        });
+      });
 
       if (treesRes.ok) {
         const treesData = await treesRes.json();
@@ -92,7 +105,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
       console.error('Error loading people registry:', err);
       setError(err.message || 'Error loading records');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -104,11 +117,11 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
   useEffect(() => {
     if (selectedPersonId && people.length > 0) {
       const match = people.find((p) => p.personId === selectedPersonId);
-      if (match) {
+      if (match && activePerson?.personId !== match.personId) {
         setActivePerson(match);
       }
     }
-  }, [selectedPersonId, people]);
+  }, [selectedPersonId, people, activePerson?.personId]);
 
   const handleSelectPerson = (person: PersonRecord) => {
     setActivePerson(person);
@@ -117,14 +130,18 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
   const handleBackToList = () => {
     setActivePerson(null);
     if (onClearSelection) onClearSelection();
-    fetchPeopleAndTrees();
+    fetchPeopleAndTrees(false);
   };
 
   const handlePersonUpdated = (updatedPerson: PersonRecord) => {
-    setPeople((prev) =>
-      prev.map((p) => (p.personId === updatedPerson.personId ? updatedPerson : p))
-    );
-    setActivePerson(updatedPerson);
+    setPeople((prev) => {
+      const exists = prev.some((p) => p.personId === updatedPerson.personId);
+      if (exists) {
+        return prev.map((p) => (p.personId === updatedPerson.personId ? updatedPerson : p));
+      }
+      return [updatedPerson, ...prev];
+    });
+    setActivePerson((prev) => (prev?.personId === updatedPerson.personId ? updatedPerson : prev));
   };
 
   // Filter people
@@ -169,7 +186,11 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
         onPersonUpdated={handlePersonUpdated}
         onSelectPerson={(pid) => {
           const target = people.find((p) => p.personId === pid);
-          if (target) setActivePerson(target);
+          if (target) {
+            setActivePerson(target);
+          } else {
+            setActivePerson({ personId: pid } as PersonRecord);
+          }
         }}
       />
     );

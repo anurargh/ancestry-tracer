@@ -1,7 +1,7 @@
 import { db } from './index.ts';
-import { person, personClaim, source, tree, treeMember } from './schema.ts';
+import { person, personClaim, parentChild, partnership, source, tree, treeMember } from './schema.ts';
 import { desc, eq, and, isNull, inArray, or } from 'drizzle-orm';
-import { PersonRecord, PersonClaimRecord } from '../types.ts';
+import { PersonRecord, PersonClaimRecord, ParentChildLinkDetail, PartnershipDetail } from '../types.ts';
 import { generateMatchCandidatesForPerson } from './duplicateDetection.ts';
 import { ensureUserHasDefaultTree, getUserRoleForPerson } from './trees.ts';
 import { recordAuditEntry } from './audit.ts';
@@ -172,7 +172,166 @@ export async function getPeopleForUser(userUid: string, includeMerged = false, f
       })
     );
 
-    return peopleWithClaims;
+    if (peopleWithClaims.length === 0) {
+      return [];
+    }
+
+    const allPersonIds = peopleWithClaims.map((p) => p.personId);
+
+    // Batch fetch parent_child relationships touching any of these people
+    const pcRows = await db
+      .select({
+        parentId: parentChild.parentId,
+        childId: parentChild.childId,
+        relationshipType: parentChild.relationshipType,
+        sourceId: parentChild.sourceId,
+        confidence: parentChild.confidence,
+        source: {
+          sourceId: source.sourceId,
+          sourceType: source.sourceType,
+          citation: source.citation,
+          reliabilityTier: source.reliabilityTier,
+        },
+      })
+      .from(parentChild)
+      .leftJoin(source, eq(parentChild.sourceId, source.sourceId))
+      .where(
+        or(
+          inArray(parentChild.parentId, allPersonIds),
+          inArray(parentChild.childId, allPersonIds)
+        )
+      );
+
+    // Batch fetch partnerships touching any of these people
+    const pshipRows = await db
+      .select({
+        partnershipId: partnership.partnershipId,
+        person1Id: partnership.person1Id,
+        person2Id: partnership.person2Id,
+        unionType: partnership.unionType,
+        startDate: partnership.startDate,
+        endDate: partnership.endDate,
+        sourceId: partnership.sourceId,
+        source: {
+          sourceId: source.sourceId,
+          sourceType: source.sourceType,
+          citation: source.citation,
+          reliabilityTier: source.reliabilityTier,
+        },
+      })
+      .from(partnership)
+      .leftJoin(source, eq(partnership.sourceId, source.sourceId))
+      .where(
+        or(
+          inArray(partnership.person1Id, allPersonIds),
+          inArray(partnership.person2Id, allPersonIds)
+        )
+      );
+
+    // Build a map of PersonRecord entities for linking
+    const personMap = new Map<string, PersonRecord>();
+    for (const p of peopleWithClaims) {
+      personMap.set(p.personId, {
+        personId: p.personId,
+        treeId: p.treeId,
+        isLiving: p.isLiving,
+        privacyLevel: p.privacyLevel,
+        ancestryStatus: p.ancestryStatus,
+        mergedInto: p.mergedInto,
+        createdBy: p.createdBy,
+        createdAt: p.createdAt ? (p.createdAt instanceof Date ? p.createdAt.toISOString() : String(p.createdAt)) : null,
+        claims: p.claims,
+      });
+    }
+
+    // Check if there are any relative IDs not in personMap
+    const missingRelativeIds = new Set<string>();
+    for (const row of pcRows) {
+      if (!personMap.has(row.parentId)) missingRelativeIds.add(row.parentId);
+      if (!personMap.has(row.childId)) missingRelativeIds.add(row.childId);
+    }
+    for (const row of pshipRows) {
+      if (!personMap.has(row.person1Id)) missingRelativeIds.add(row.person1Id);
+      if (!personMap.has(row.person2Id)) missingRelativeIds.add(row.person2Id);
+    }
+
+    if (missingRelativeIds.size > 0) {
+      const extraPeople = await db
+        .select()
+        .from(person)
+        .where(inArray(person.personId, Array.from(missingRelativeIds)));
+
+      for (const ep of extraPeople) {
+        const claims = await getClaimsForPerson(ep.personId);
+        personMap.set(ep.personId, {
+          personId: ep.personId,
+          treeId: ep.treeId,
+          isLiving: ep.isLiving,
+          privacyLevel: ep.privacyLevel,
+          ancestryStatus: ep.ancestryStatus,
+          mergedInto: ep.mergedInto,
+          createdBy: ep.createdBy,
+          createdAt: ep.createdAt ? (ep.createdAt instanceof Date ? ep.createdAt.toISOString() : String(ep.createdAt)) : null,
+          claims,
+        });
+      }
+    }
+
+    // Attach parents, children, and partnerships to each person in peopleWithClaims
+    const peopleWithLineage = peopleWithClaims.map((p) => {
+      const pid = p.personId;
+
+      const parents: ParentChildLinkDetail[] = pcRows
+        .filter((r) => r.childId === pid)
+        .map((r) => ({
+          parentId: r.parentId,
+          childId: r.childId,
+          relationshipType: r.relationshipType,
+          sourceId: r.sourceId,
+          confidence: r.confidence,
+          person: personMap.get(r.parentId) || ({ personId: r.parentId, claims: [] } as PersonRecord),
+          source: r.source?.sourceId ? r.source : null,
+        }));
+
+      const children: ParentChildLinkDetail[] = pcRows
+        .filter((r) => r.parentId === pid)
+        .map((r) => ({
+          parentId: r.parentId,
+          childId: r.childId,
+          relationshipType: r.relationshipType,
+          sourceId: r.sourceId,
+          confidence: r.confidence,
+          person: personMap.get(r.childId) || ({ personId: r.childId, claims: [] } as PersonRecord),
+          source: r.source?.sourceId ? r.source : null,
+        }));
+
+      const partnerships: PartnershipDetail[] = pshipRows
+        .filter((r) => r.person1Id === pid || r.person2Id === pid)
+        .map((r) => {
+          const partnerId = r.person1Id === pid ? r.person2Id : r.person1Id;
+          return {
+            partnershipId: r.partnershipId,
+            person1Id: r.person1Id,
+            person2Id: r.person2Id,
+            partner: personMap.get(partnerId) || ({ personId: partnerId, claims: [] } as PersonRecord),
+            unionType: r.unionType,
+            startDate: r.startDate,
+            endDate: r.endDate,
+            sourceId: r.sourceId,
+            source: r.source?.sourceId ? r.source : null,
+          };
+        });
+
+      return {
+        ...p,
+        createdAt: p.createdAt ? (p.createdAt instanceof Date ? p.createdAt.toISOString() : String(p.createdAt)) : null,
+        parents,
+        children,
+        partnerships,
+      };
+    });
+
+    return peopleWithLineage;
   } catch (error) {
     console.error('Failed to get people records:', error);
     throw new Error('Database query failed. Please try again later.', { cause: error });

@@ -270,6 +270,22 @@ async function startServer() {
     }
   });
 
+  // Get discoverable relatives for a person by ID
+  app.get('/api/discovery/relatives/:personId', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const uid = req.user?.uid;
+      const { personId } = req.params;
+      if (!uid) return res.status(400).json({ error: 'Missing UID' });
+      if (!personId) return res.status(400).json({ error: 'personId is required' });
+
+      const result = await searchRelativeDiscovery(personId, uid);
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      console.error('Error fetching discoverable relatives:', error);
+      res.status(500).json({ error: error.message || 'Failed to fetch discoverable relatives' });
+    }
+  });
+
   // ==========================================
   // People & Claims Routes with RBAC
   // ==========================================
@@ -498,9 +514,9 @@ async function startServer() {
       if (!uid) return res.status(400).json({ error: 'Missing UID' });
 
       const { parentId, childId, relationshipType } = req.body;
-      if (!parentId || !childId || !relationshipType) {
+      if (!parentId || !childId) {
         return res.status(400).json({
-          error: 'parentId, childId, and relationshipType are required',
+          error: 'parentId and childId are required',
         });
       }
 
@@ -509,13 +525,13 @@ async function startServer() {
         getUserRoleForPerson(childId, uid),
       ]);
 
-      if (!parentRole.canEdit || !childRole.canEdit) {
+      if (!parentRole.canEdit && !childRole.canEdit) {
         return res.status(403).json({
           error: 'Forbidden: You must be an Editor or Owner to delete relationships.',
         });
       }
 
-      const deleted = await removeParentChildRelationship(parentId, childId, relationshipType);
+      const deleted = await removeParentChildRelationship(parentId, childId, relationshipType, uid);
       res.json({ success: true, deleted });
     } catch (error: any) {
       console.error('Error deleting parent-child relationship:', error);
@@ -529,9 +545,9 @@ async function startServer() {
       const uid = req.user?.uid;
       if (!uid) return res.status(400).json({ error: 'Missing UID' });
 
+      const person1Id = req.body.person1Id || req.body.personAId;
+      const person2Id = req.body.person2Id || req.body.personBId;
       const {
-        person1Id,
-        person2Id,
         unionType,
         startDate,
         endDate,

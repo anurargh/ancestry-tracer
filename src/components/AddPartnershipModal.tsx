@@ -94,6 +94,8 @@ export const AddPartnershipModal: React.FC<AddPartnershipModalProps> = ({
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          person1Id: currentPerson.personId,
+          person2Id: partnerId,
           personAId: currentPerson.personId,
           personBId: partnerId,
           unionType,

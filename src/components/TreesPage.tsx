@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.tsx';
 import { TreeRecord, TreeMemberDetail, TreeRole, PersonRecord } from '../types.ts';
+import { ConfirmModal } from './ConfirmModal.tsx';
 import {
   FolderTree,
   Plus,
@@ -66,6 +67,8 @@ export const TreesPage: React.FC<TreesPageProps> = ({
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<TreeRole>('editor');
   const [invitingMember, setInvitingMember] = useState(false);
+  const [pendingRemoveMemberUid, setPendingRemoveMemberUid] = useState<string | null>(null);
+  const [removingMember, setRemovingMember] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
@@ -263,12 +266,16 @@ export const TreesPage: React.FC<TreesPageProps> = ({
     }
   };
 
-  const handleRemoveMember = async (userId: string) => {
-    if (!activeTreeId) return;
-    if (!confirm('Revoke archival access for this curator?')) return;
+  const handleRemoveMemberClick = (userId: string) => {
+    setPendingRemoveMemberUid(userId);
+  };
+
+  const executeConfirmRemoveMember = async () => {
+    if (!activeTreeId || !pendingRemoveMemberUid) return;
+    setRemovingMember(true);
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`/api/trees/${activeTreeId}/members/${userId}`, {
+      const res = await fetch(`/api/trees/${activeTreeId}/members/${pendingRemoveMemberUid}`, {
         method: 'DELETE',
         headers,
       });
@@ -284,6 +291,8 @@ export const TreesPage: React.FC<TreesPageProps> = ({
       console.error('Failed to remove member:', err);
       setMessage({ type: 'error', text: 'Error revoking curator access.' });
     } finally {
+      setRemovingMember(false);
+      setPendingRemoveMemberUid(null);
       setTimeout(() => setMessage(null), 5000);
     }
   };
@@ -590,8 +599,8 @@ export const TreesPage: React.FC<TreesPageProps> = ({
 
                         {m.role !== 'owner' && (
                           <button
-                            onClick={() => handleRemoveMember(m.userId)}
-                            className="text-[#64707D] hover:text-[#9C4A3C] transition-colors p-1"
+                            onClick={() => handleRemoveMemberClick(m.userId)}
+                            className="text-[#64707D] hover:text-[#9C4A3C] transition-colors p-1 cursor-pointer"
                             title="Revoke archival privileges"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -743,6 +752,18 @@ export const TreesPage: React.FC<TreesPageProps> = ({
           </motion.div>
         </div>
       )}
+      {/* Confirm Member Removal Modal */}
+      <ConfirmModal
+        isOpen={Boolean(pendingRemoveMemberUid)}
+        onClose={() => setPendingRemoveMemberUid(null)}
+        onConfirm={executeConfirmRemoveMember}
+        title="Revoke Curator Access"
+        description="Are you sure you want to revoke archival access and drafting credentials for this collaborator?"
+        confirmLabel="Revoke Access"
+        cancelLabel="Keep Privileges"
+        isLoading={removingMember}
+        isDestructive={true}
+      />
     </div>
   );
 };

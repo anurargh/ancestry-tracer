@@ -444,34 +444,38 @@ export async function addParentChildRelationship(input: AddParentChildInput) {
 export async function removeParentChildRelationship(
   parentId: string,
   childId: string,
-  relationshipType: string,
+  relationshipType?: string,
   changedBy = 'user'
 ) {
+  const conditions = [
+    eq(parentChild.parentId, parentId),
+    eq(parentChild.childId, childId),
+  ];
+  if (relationshipType) {
+    conditions.push(eq(parentChild.relationshipType, relationshipType));
+  }
+
   const deleted = await db
     .delete(parentChild)
-    .where(
-      and(
-        eq(parentChild.parentId, parentId),
-        eq(parentChild.childId, childId),
-        eq(parentChild.relationshipType, relationshipType)
-      )
-    )
+    .where(and(...conditions))
     .returning();
 
   if (deleted.length > 0) {
     // Audit log parent_child deletion
-    await recordAuditEntry({
-      entityType: 'parent_child',
-      entityId: `${parentId}:${childId}`,
-      action: 'delete',
-      oldValue: {
-        parentId,
-        childId,
-        relationshipType,
-      },
-      newValue: null,
-      changedBy,
-    });
+    for (const d of deleted) {
+      await recordAuditEntry({
+        entityType: 'parent_child',
+        entityId: `${parentId}:${childId}`,
+        action: 'delete',
+        oldValue: {
+          parentId,
+          childId,
+          relationshipType: d.relationshipType,
+        },
+        newValue: null,
+        changedBy,
+      });
+    }
 
     // Incremental ancestor_closure recomputation for affected descendants
     try {

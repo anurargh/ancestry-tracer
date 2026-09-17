@@ -43,11 +43,21 @@ export const RelativeDiscoveryModal: React.FC<RelativeDiscoveryModalProps> = ({
         });
 
         if (res.ok) {
-          const data = await res.json();
-          setMatches(data.matches || []);
+          const contentType = res.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const data = await res.json();
+            setMatches(data.matches || []);
+          } else {
+            setMatches([]);
+          }
         } else {
-          const errData = await res.json();
-          setError(errData.error || 'Failed to discover living relatives');
+          const contentType = res.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const errData = await res.json().catch(() => ({}));
+            setError(errData.error || 'Failed to discover living relatives');
+          } else {
+            setError(`Discovery service responded with status ${res.status}`);
+          }
         }
       } catch (err: any) {
         console.error('Discovery error:', err);
@@ -130,10 +140,10 @@ export const RelativeDiscoveryModal: React.FC<RelativeDiscoveryModalProps> = ({
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-display font-bold text-sm text-[#F4EDE2]">
-                        {m.displayName}
+                        {m.displayName || m.name}
                       </h4>
                       <div className="text-[10px] text-[#8C8275] font-mono mt-0.5">
-                        Repository: {m.treeName || 'Consented Lineage'} • Curator: {m.ownerName || 'Verified Researcher'}
+                        Repository: {m.treeName || 'Consented Lineage'} • Curator: {m.ownerDisplayName || m.ownerName || 'Verified Researcher'}
                       </div>
                     </div>
 
@@ -142,9 +152,9 @@ export const RelativeDiscoveryModal: React.FC<RelativeDiscoveryModalProps> = ({
                     </span>
                   </div>
 
-                  {m.relationship && (
+                  {(m.relationshipSummary || m.relationship) && (
                     <div className="text-xs font-serif text-[#C4B59D] italic">
-                      Estimated Kinship Vector: <strong className="text-[#F4EDE2] not-italic">{m.relationship}</strong>
+                      Estimated Kinship Vector: <strong className="text-[#F4EDE2] not-italic">{m.relationshipSummary || m.relationship}</strong>
                     </div>
                   )}
 

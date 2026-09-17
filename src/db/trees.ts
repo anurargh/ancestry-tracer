@@ -379,8 +379,8 @@ export async function getUserRoleForPerson(
     }
   }
 
-  // Fallback: If person was created by this user
-  if (p.createdBy === userUid) {
+  // Fallback: If person was created by this user or default seed/unassigned
+  if (p.createdBy === userUid || p.createdBy === 'user' || !p.createdBy) {
     return {
       role: 'owner',
       treeId: p.treeId,

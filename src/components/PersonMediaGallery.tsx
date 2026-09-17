@@ -14,6 +14,7 @@ import {
   Scroll,
 } from 'lucide-react';
 import { PersonMediaRecord } from '../types.ts';
+import { ConfirmModal } from './ConfirmModal.tsx';
 
 interface PersonMediaGalleryProps {
   media: PersonMediaRecord[];
@@ -31,6 +32,7 @@ export const PersonMediaGallery: React.FC<PersonMediaGalleryProps> = ({
   const [selectedMedia, setSelectedMedia] = useState<PersonMediaRecord | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDeleteMediaId, setPendingDeleteMediaId] = useState<string | null>(null);
 
   const copyChecksum = (checksum: string, id: string) => {
     navigator.clipboard.writeText(checksum);
@@ -38,16 +40,19 @@ export const PersonMediaGallery: React.FC<PersonMediaGalleryProps> = ({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleDelete = async (mediaId: string) => {
-    if (!window.confirm('Are you sure you want to permanently remove this archival document from the repository?')) {
-      return;
-    }
-    setDeletingId(mediaId);
+  const handleDelete = (mediaId: string) => {
+    setPendingDeleteMediaId(mediaId);
+  };
+
+  const executeConfirmDeleteMedia = async () => {
+    if (!pendingDeleteMediaId) return;
+    setDeletingId(pendingDeleteMediaId);
     try {
-      await onDeleteMedia(mediaId);
-      if (selectedMedia?.mediaId === mediaId) {
+      await onDeleteMedia(pendingDeleteMediaId);
+      if (selectedMedia?.mediaId === pendingDeleteMediaId) {
         setSelectedMedia(null);
       }
+      setPendingDeleteMediaId(null);
     } finally {
       setDeletingId(null);
     }
@@ -280,6 +285,18 @@ export const PersonMediaGallery: React.FC<PersonMediaGalleryProps> = ({
           </div>
         </div>
       )}
+      {/* Confirm Media Removal Modal */}
+      <ConfirmModal
+        isOpen={Boolean(pendingDeleteMediaId)}
+        onClose={() => setPendingDeleteMediaId(null)}
+        onConfirm={executeConfirmDeleteMedia}
+        title="Remove Document"
+        description="Are you sure you want to permanently remove this archival document from the repository?"
+        confirmLabel="Remove Document"
+        cancelLabel="Keep Document"
+        isLoading={Boolean(deletingId)}
+        isDestructive={true}
+      />
     </div>
   );
 };

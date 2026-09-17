@@ -20,6 +20,7 @@ import {
 import { AddClaimModal } from './AddClaimModal.tsx';
 import { AddParentChildModal } from './AddParentChildModal.tsx';
 import { AddPartnershipModal } from './AddPartnershipModal.tsx';
+import { ConfirmModal } from './ConfirmModal.tsx';
 import { RelationshipCalculatorModal } from './RelationshipCalculatorModal.tsx';
 import { RelativeDiscoveryModal } from './RelativeDiscoveryModal.tsx';
 import { PersonMediaGallery } from './PersonMediaGallery.tsx';
@@ -96,16 +97,36 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
   const [parentChildModalOpen, setParentChildModalOpen] = useState<boolean>(false);
   const [parentChildMode, setParentChildMode] = useState<'parent' | 'child'>('parent');
   const [partnershipModalOpen, setPartnershipModalOpen] = useState<boolean>(false);
-  const [unlinkingKey, setUnlinkingKey] = useState<string | null>(null);
+
+  // Unlink Confirmation State
+  interface PendingUnlinkState {
+    type: 'parent' | 'child' | 'partnership';
+    title: string;
+    description: string;
+    targetName: string;
+    parentId?: string;
+    childId?: string;
+    relationshipType?: ParentChildRelationshipType;
+    partnershipId?: string;
+  }
+
+  const [pendingUnlink, setPendingUnlink] = useState<PendingUnlinkState | null>(null);
+  const [unlinkLoading, setUnlinkLoading] = useState<boolean>(false);
+  const [unlinkError, setUnlinkError] = useState<string | null>(null);
+  const [feedbackToast, setFeedbackToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Ancestor Closure State
   const [ancestors, setAncestors] = useState<AncestorDetail[]>([]);
   const [loadingAncestors, setLoadingAncestors] = useState<boolean>(false);
   const [showClosureDetails, setShowClosureDetails] = useState<boolean>(true);
 
-  // Relationship Calculator Modal state
-  const [calculatorModalOpen, setCalculatorModalOpen] = useState<boolean>(false);
-  const [calcTargetPersonId, setCalcTargetPersonId] = useState<string | null>(null);
+  // Local synced person state
+  const [currentPerson, setCurrentPerson] = useState<PersonRecord>(person);
+  const [loadingLineage, setLoadingLineage] = useState<boolean>(false);
+
+  useEffect(() => {
+    setCurrentPerson(person);
+  }, [person]);
 
   // Relative Discovery Modal state
   const [discoveryModalOpen, setDiscoveryModalOpen] = useState<boolean>(false);
@@ -113,8 +134,14 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
   // Media Upload Modal state
   const [mediaUploadModalOpen, setMediaUploadModalOpen] = useState<boolean>(false);
 
+  // Relationship Calculator Modal state
+  const [calculatorModalOpen, setCalculatorModalOpen] = useState<boolean>(false);
+  const [calcTargetPersonId, setCalcTargetPersonId] = useState<string | null>(null);
+
+  const displayPerson = currentPerson || person;
+
   // Evaluate claims
-  const evaluation = evaluatePersonClaims(person.claims || []);
+  const evaluation = evaluatePersonClaims(displayPerson.claims || []);
 
   const allAttributeKeys = Array.from(
     new Set([...CORE_ATTRIBUTES, ...Object.keys(evaluation)])
@@ -137,7 +164,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
       setLoadingAncestors(true);
       const token = await getIdToken();
       if (!token) return;
-      const res = await fetch(`/api/people/${person.personId}/ancestors`, {
+      const res = await fetch(`/api/people/${displayPerson.personId}/ancestors`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -151,83 +178,147 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
     }
   };
 
-  useEffect(() => {
-    fetchAncestors();
-  }, [person.personId]);
-
   const refreshPerson = async () => {
     try {
+      setLoadingLineage(true);
       const token = await getIdToken();
       if (!token) return;
-      const res = await fetch(`/api/people/${person.personId}`, {
+      const res = await fetch(`/api/people/${displayPerson.personId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const data = await res.json();
         if (data.person) {
+          setCurrentPerson(data.person);
           onPersonUpdated(data.person);
         }
       }
       fetchAncestors();
     } catch (err) {
       console.error('Failed to refresh person record:', err);
+    } finally {
+      setLoadingLineage(false);
     }
   };
 
-  const handleUnlinkParentChild = async (
-    parentId: string,
-    childId: string,
-    relationshipType: ParentChildRelationshipType
-  ) => {
-    if (
-      !confirm(
-        `Remove this ${relationshipType} parent-child link? Sourced provenance records will be preserved.`
-      )
-    )
-      return;
+  useEffect(() => {
+    refreshPerson();
+  }, [displayPerson.personId]);
 
-    const key = `${parentId}-${childId}-${relationshipType}`;
-    setUnlinkingKey(key);
-
-    try {
-      const token = await getIdToken();
-      const res = await fetch('/api/relationships/parent-child', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ parentId, childId, relationshipType }),
-      });
-
-      if (res.ok) {
-        await refreshPerson();
-      }
-    } catch (err) {
-      console.error('Failed to unlink parent-child:', err);
-    } finally {
-      setUnlinkingKey(null);
-    }
+  const promptUnlinkParent = (p: ParentChildLinkDetail, pName: string) => {
+    setUnlinkError(null);
+    setPendingUnlink({
+      type: 'parent',
+      title: 'Unlink Parental Edge',
+      description: `Are you sure you want to remove the parent-child lineage link between ${pName} and ${bestName} (${RELATIONSHIP_TYPE_LABELS[p.relationshipType]?.label || p.relationshipType})?`,
+      targetName: pName,
+      parentId: p.parentId,
+      childId: p.childId,
+      relationshipType: p.relationshipType,
+    });
   };
 
-  const handleUnlinkPartnership = async (partnershipId: string) => {
-    if (!confirm('Remove this partnership record?')) return;
-    setUnlinkingKey(partnershipId);
+  const promptUnlinkChild = (c: ParentChildLinkDetail, cName: string) => {
+    setUnlinkError(null);
+    setPendingUnlink({
+      type: 'child',
+      title: 'Unlink Descendant Child',
+      description: `Are you sure you want to remove the parent-child lineage link between ${bestName} and child ${cName} (${RELATIONSHIP_TYPE_LABELS[c.relationshipType]?.label || c.relationshipType})?`,
+      targetName: cName,
+      parentId: c.parentId,
+      childId: c.childId,
+      relationshipType: c.relationshipType,
+    });
+  };
+
+  const promptUnlinkPartnership = (p: PartnershipDetail, partnerName: string) => {
+    setUnlinkError(null);
+    setPendingUnlink({
+      type: 'partnership',
+      title: 'Remove Spousal Union',
+      description: `Are you sure you want to remove the marriage/union record between ${bestName} and ${partnerName} (${UNION_TYPE_LABELS[p.unionType as PartnershipUnionType]?.label || p.unionType})?`,
+      targetName: partnerName,
+      partnershipId: p.partnershipId,
+    });
+  };
+
+  const executeConfirmUnlink = async () => {
+    if (!pendingUnlink) return;
+    setUnlinkLoading(true);
+    setUnlinkError(null);
 
     try {
       const token = await getIdToken();
-      const res = await fetch(`/api/relationships/partnership/${partnershipId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      if (!token) throw new Error('Authentication required');
 
-      if (res.ok) {
-        await refreshPerson();
+      if (pendingUnlink.type === 'parent' || pendingUnlink.type === 'child') {
+        const { parentId, childId, relationshipType } = pendingUnlink;
+        if (!parentId || !childId) throw new Error('Missing parent or child identifier');
+
+        const res = await fetch('/api/relationships/parent-child', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ parentId, childId, relationshipType }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to remove parent-child link');
+        }
+
+        // Optimistically update currentPerson and parent component
+        const updatedParentChild: PersonRecord = {
+          ...displayPerson,
+          parents: (displayPerson.parents || []).filter(
+            (p) => !(p.parentId === parentId && p.childId === childId)
+          ),
+          children: (displayPerson.children || []).filter(
+            (c) => !(c.parentId === parentId && c.childId === childId)
+          ),
+        };
+        setCurrentPerson(updatedParentChild);
+        onPersonUpdated(updatedParentChild);
+
+        setFeedbackToast({ message: 'Lineage relationship link removed successfully.', type: 'success' });
+        setTimeout(() => setFeedbackToast(null), 3500);
+      } else if (pendingUnlink.type === 'partnership') {
+        const { partnershipId } = pendingUnlink;
+        if (!partnershipId) throw new Error('Missing partnership identifier');
+
+        const res = await fetch(`/api/relationships/partnership/${partnershipId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to remove partnership record');
+        }
+
+        // Optimistically update currentPerson and parent component
+        const updatedPartnership: PersonRecord = {
+          ...displayPerson,
+          partnerships: (displayPerson.partnerships || []).filter(
+            (p) => p.partnershipId !== partnershipId
+          ),
+        };
+        setCurrentPerson(updatedPartnership);
+        onPersonUpdated(updatedPartnership);
+
+        setFeedbackToast({ message: 'Partnership record removed successfully.', type: 'success' });
+        setTimeout(() => setFeedbackToast(null), 3500);
       }
-    } catch (err) {
-      console.error('Failed to unlink partnership:', err);
+
+      setPendingUnlink(null);
+      await refreshPerson();
+    } catch (err: any) {
+      console.error('Failed to unlink relationship:', err);
+      setUnlinkError(err.message || 'Failed to remove relationship link');
     } finally {
-      setUnlinkingKey(null);
+      setUnlinkLoading(false);
     }
   };
 
@@ -264,13 +355,13 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
   const nameEval = evaluation['name'];
   const bestName = nameEval?.bestClaims[0]?.value || 'Unnamed Individual';
 
-  const totalClaims = person.claims?.length || 0;
-  const activeClaims = person.claims?.filter((c) => c.status === 'active').length || 0;
-  const supersededClaims = person.claims?.filter((c) => c.status === 'superseded').length || 0;
+  const totalClaims = displayPerson.claims?.length || 0;
+  const activeClaims = displayPerson.claims?.filter((c) => c.status === 'active').length || 0;
+  const supersededClaims = displayPerson.claims?.filter((c) => c.status === 'superseded').length || 0;
 
-  const parents = person.parents || [];
-  const children = person.children || [];
-  const partnerships = person.partnerships || [];
+  const parents = displayPerson.parents || [];
+  const children = displayPerson.children || [];
+  const partnerships = displayPerson.partnerships || [];
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -307,7 +398,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
             <span>KINSHIP CALC</span>
           </button>
 
-          {((person as any).canEdit ?? true) && (
+          {((displayPerson as any).canEdit ?? true) && (
             <button
               id="add-claim-main-btn"
               onClick={() => openAddClaimModal('name')}
@@ -326,24 +417,24 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2.5">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-mono border border-[#C5A059]/50 bg-[#07090D] text-[#F5DE98] font-semibold">
-                DOSSIER UUID: {person.personId.slice(0, 12)}...
+                DOSSIER UUID: {displayPerson.personId.slice(0, 12)}...
               </span>
 
               {/* RBAC Tree Role */}
-              {(person as any).userRole && (
+              {(displayPerson as any).userRole && (
                 <span
                   className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-mono uppercase ${
-                    (person as any).userRole === 'owner'
+                    (displayPerson as any).userRole === 'owner'
                       ? 'border border-[#C5A059] bg-[#0D1219] text-[#F5DE98]'
                       : 'border border-[#222B38] bg-[#07090D] text-[#A89F91]'
                   }`}
                 >
                   <Crown className="w-3 h-3 text-[#C5A059]" />
-                  <span>Access: {(person as any).userRole}</span>
+                  <span>Access: {(displayPerson as any).userRole}</span>
                 </span>
               )}
 
-              {person.isLiving ? (
+              {displayPerson.isLiving ? (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-mono border border-[#1D5C4A] bg-[#0B221B] text-[#52B395]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#52B395]"></span>
                   LIVING (PRIVACY PROTECTED)
@@ -354,7 +445,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
                 </span>
               )}
 
-              {person.ancestryStatus === 'direct_ancestor' && (
+              {displayPerson.ancestryStatus === 'direct_ancestor' && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-mono border border-[#C5A059]/40 bg-[#0D1219] text-[#F5DE98]">
                   ✦ DIRECT ANCESTOR LINE
                 </span>
@@ -366,7 +457,8 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
             </h1>
 
             <p className="text-xs text-[#A89F91] font-mono">
-              Tree Folio: {person.treeId.slice(0, 12)}... • Registered: {new Date(person.createdAt).toLocaleDateString()}
+              {displayPerson.treeId ? `Tree Folio: ${displayPerson.treeId.slice(0, 12)}... • ` : ''}
+              Registered: {displayPerson.createdAt ? new Date(displayPerson.createdAt).toLocaleDateString() : '—'}
             </p>
           </div>
 
@@ -384,7 +476,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
             <div className="w-px h-9 bg-[#222B38]"></div>
             <div className="text-center px-3">
               <div className="text-[9px] text-[#A89F91] uppercase tracking-wider">Artifacts</div>
-              <div className="text-lg font-deco font-bold text-[#C5A059]">{person.media?.length || 0}</div>
+              <div className="text-lg font-deco font-bold text-[#C5A059]">{displayPerson.media?.length || 0}</div>
             </div>
           </div>
         </div>
@@ -550,7 +642,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
               <Users className="w-4 h-4 text-[#C5A059]" />
               <span>Parental Lineages ({parents.length})</span>
             </h2>
-            {((person as any).canEdit ?? true) && (
+            {((displayPerson as any).canEdit ?? true) && (
               <button
                 id="link-parent-btn"
                 onClick={openLinkParent}
@@ -563,9 +655,15 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
           </div>
 
           {parents.length === 0 ? (
-            <div className="text-xs text-[#6E675C] py-6 text-center border border-[#222B38] bg-[#07090D] font-reading">
-              No parent linkages recorded in graph.
-            </div>
+            loadingLineage ? (
+              <div className="text-xs text-[#A89F91] py-6 text-center border border-[#222B38] bg-[#07090D] font-mono animate-pulse">
+                Retrieving lineage links...
+              </div>
+            ) : (
+              <div className="text-xs text-[#6E675C] py-6 text-center border border-[#222B38] bg-[#07090D] font-reading">
+                No parent linkages recorded in graph.
+              </div>
+            )
           ) : (
             <div className="space-y-2.5">
               {parents.map((p) => {
@@ -590,17 +688,13 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
                       </div>
                     </div>
 
-                    {((person as any).canEdit ?? true) && (
+                    {((displayPerson as any).canEdit ?? true) && (
                       <button
-                        onClick={() =>
-                          handleUnlinkParentChild(
-                            p.parentId,
-                            p.childId,
-                            p.relationshipType as ParentChildRelationshipType
-                          )
-                        }
-                        disabled={unlinkingKey === key}
-                        className="p-1 text-[#6E675C] hover:text-[#D9658B] transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          promptUnlinkParent(p, pName);
+                        }}
+                        className="p-1.5 text-[#8C8275] hover:text-[#E06B6B] hover:bg-[#2A1513] border border-transparent hover:border-[#9C4A3C]/40 rounded-sm transition-colors cursor-pointer"
                         title="Unlink parent"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -620,7 +714,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
               <Users className="w-4 h-4 text-[#C5A059]" />
               <span>Descendant Children ({children.length})</span>
             </h2>
-            {((person as any).canEdit ?? true) && (
+            {((displayPerson as any).canEdit ?? true) && (
               <button
                 id="link-child-btn"
                 onClick={openLinkChild}
@@ -633,9 +727,15 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
           </div>
 
           {children.length === 0 ? (
-            <div className="text-xs text-[#6E675C] py-6 text-center border border-[#222B38] bg-[#07090D] font-reading">
-              No descendant records registered.
-            </div>
+            loadingLineage ? (
+              <div className="text-xs text-[#A89F91] py-6 text-center border border-[#222B38] bg-[#07090D] font-mono animate-pulse">
+                Retrieving lineage links...
+              </div>
+            ) : (
+              <div className="text-xs text-[#6E675C] py-6 text-center border border-[#222B38] bg-[#07090D] font-reading">
+                No descendant records registered.
+              </div>
+            )
           ) : (
             <div className="space-y-2.5">
               {children.map((c) => {
@@ -660,17 +760,13 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
                       </div>
                     </div>
 
-                    {((person as any).canEdit ?? true) && (
+                    {((displayPerson as any).canEdit ?? true) && (
                       <button
-                        onClick={() =>
-                          handleUnlinkParentChild(
-                            c.parentId,
-                            c.childId,
-                            c.relationshipType as ParentChildRelationshipType
-                          )
-                        }
-                        disabled={unlinkingKey === key}
-                        className="p-1 text-[#6E675C] hover:text-[#D9658B] transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          promptUnlinkChild(c, cName);
+                        }}
+                        className="p-1.5 text-[#8C8275] hover:text-[#E06B6B] hover:bg-[#2A1513] border border-transparent hover:border-[#9C4A3C]/40 rounded-sm transition-colors cursor-pointer"
                         title="Unlink child"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -691,7 +787,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
             <Heart className="w-4 h-4 text-[#C5A059]" />
             <span>Spousal Unions & Partnerships ({partnerships.length})</span>
           </h2>
-          {((person as any).canEdit ?? true) && (
+          {((displayPerson as any).canEdit ?? true) && (
             <button
               id="link-partner-btn"
               onClick={openLinkPartner}
@@ -704,9 +800,15 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
         </div>
 
         {partnerships.length === 0 ? (
-          <div className="text-xs text-[#6E675C] py-6 text-center border border-[#222B38] bg-[#07090D] font-reading">
-            No marriage or partnership unions registered.
-          </div>
+          loadingLineage ? (
+            <div className="text-xs text-[#A89F91] py-6 text-center border border-[#222B38] bg-[#07090D] font-mono animate-pulse">
+              Retrieving union records...
+            </div>
+          ) : (
+            <div className="text-xs text-[#6E675C] py-6 text-center border border-[#222B38] bg-[#07090D] font-reading">
+              No marriage or partnership unions registered.
+            </div>
+          )
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {partnerships.map((p) => {
@@ -719,7 +821,10 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
                   className="p-3.5 bg-[#07090D] border border-[#222B38] flex items-center justify-between hover:border-[#C5A059]/60 transition-colors"
                 >
                   <div
-                    onClick={() => onSelectPerson && onSelectPerson(p.partner.personId)}
+                    onClick={() => {
+                      const partnerId = p.partner?.personId || (p as any).partnerId || (p as any).person2Id;
+                      if (partnerId && onSelectPerson) onSelectPerson(partnerId);
+                    }}
                     className="cursor-pointer space-y-1"
                   >
                     <div className="font-deco font-bold text-xs text-[#F5DE98] hover:text-[#FFF0C2]">
@@ -731,11 +836,13 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
                     </div>
                   </div>
 
-                  {((person as any).canEdit ?? true) && (
+                  {((displayPerson as any).canEdit ?? true) && (
                     <button
-                      onClick={() => handleUnlinkPartnership(p.partnershipId)}
-                      disabled={unlinkingKey === p.partnershipId}
-                      className="p-1 text-[#6E675C] hover:text-[#D9658B] transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        promptUnlinkPartnership(p, partnerName);
+                      }}
+                      className="p-1.5 text-[#8C8275] hover:text-[#E06B6B] hover:bg-[#2A1513] border border-transparent hover:border-[#9C4A3C]/40 rounded-sm transition-colors cursor-pointer"
                       title="Unlink partnership"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -809,8 +916,8 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
 
       {/* Attached Media & Archival Documents Gallery */}
       <PersonMediaGallery
-        media={person.media || []}
-        canEdit={(person as any).canEdit ?? true}
+        media={displayPerson.media || []}
+        canEdit={(displayPerson as any).canEdit ?? true}
         onDeleteMedia={handleDeleteMedia}
         onOpenUpload={() => setMediaUploadModalOpen(true)}
       />
@@ -820,7 +927,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
         <AddClaimModal
           isOpen={claimModalOpen}
           onClose={() => setClaimModalOpen(false)}
-          person={person}
+          person={displayPerson}
           initialAttributeType={modalInitialAttribute}
           onClaimAdded={() => refreshPerson()}
           getIdToken={getIdToken}
@@ -831,7 +938,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
         <AddParentChildModal
           isOpen={parentChildModalOpen}
           onClose={() => setParentChildModalOpen(false)}
-          currentPerson={person}
+          currentPerson={displayPerson}
           mode={parentChildMode}
           onRelationshipAdded={() => refreshPerson()}
           getIdToken={getIdToken}
@@ -842,7 +949,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
         <AddPartnershipModal
           isOpen={partnershipModalOpen}
           onClose={() => setPartnershipModalOpen(false)}
-          currentPerson={person}
+          currentPerson={displayPerson}
           onPartnershipAdded={() => refreshPerson()}
           getIdToken={getIdToken}
         />
@@ -852,7 +959,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
         <RelationshipCalculatorModal
           isOpen={calculatorModalOpen}
           onClose={() => setCalculatorModalOpen(false)}
-          initialPersonAId={person.personId}
+          initialPersonAId={displayPerson.personId}
           initialPersonBId={calcTargetPersonId}
           onSelectPerson={onSelectPerson}
         />
@@ -860,7 +967,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
 
       {discoveryModalOpen && (
         <RelativeDiscoveryModal
-          person={{ ...person, displayName: bestName }}
+          person={{ ...displayPerson, displayName: bestName }}
           onClose={() => setDiscoveryModalOpen(false)}
           onSelectRelative={(pid) => {
             setDiscoveryModalOpen(false);
@@ -871,11 +978,48 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
 
       {mediaUploadModalOpen && (
         <MediaUploadModal
-          personId={person.personId}
+          personId={displayPerson.personId}
           personName={bestName}
           onClose={() => setMediaUploadModalOpen(false)}
           onMediaUploaded={() => refreshPerson()}
         />
+      )}
+
+      {/* Relationship Deletion Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(pendingUnlink)}
+        onClose={() => {
+          if (!unlinkLoading) {
+            setPendingUnlink(null);
+            setUnlinkError(null);
+          }
+        }}
+        onConfirm={executeConfirmUnlink}
+        title={pendingUnlink?.title || 'Remove Relationship'}
+        description={pendingUnlink?.description || 'Are you sure you want to remove this record?'}
+        confirmLabel="Remove Link"
+        cancelLabel="Keep Link"
+        isLoading={unlinkLoading}
+        error={unlinkError}
+        isDestructive={true}
+      />
+
+      {/* Floating Feedback Toast Notification */}
+      {feedbackToast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-sm shadow-2xl border flex items-center gap-2.5 text-xs font-mono transition-all animate-bounce ${
+            feedbackToast.type === 'success'
+              ? 'bg-[#121A15] border-[#4C7A5E] text-[#85C49F]'
+              : 'bg-[#2A1513] border-[#9C4A3C] text-[#EBB4AC]'
+          }`}
+        >
+          {feedbackToast.type === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 text-[#85C49F]" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-[#EBB4AC]" />
+          )}
+          <span>{feedbackToast.message}</span>
+        </div>
       )}
     </div>
   );
