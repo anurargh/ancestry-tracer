@@ -146,13 +146,13 @@ export const TreesPage: React.FC<TreesPageProps> = ({
         setMessage({
           type: 'success',
           text: newStatus
-            ? 'Charter Updated: Living records may now be mutually discovered across authenticated archival branches.'
-            : 'Charter Updated: Zero-information discovery protocol enforced. All living branches are private.',
+            ? 'Privacy Settings Updated: Living relatives can now be discovered in relative matching.'
+            : 'Privacy Settings Updated: Living relatives are kept private.',
         });
       }
     } catch (err) {
       console.error('Failed to update consent:', err);
-      setMessage({ type: 'error', text: 'Failed to update discovery protocol charter.' });
+      setMessage({ type: 'error', text: 'Failed to update privacy settings.' });
     } finally {
       setUpdatingConsent(false);
       setTimeout(() => setMessage(null), 5000);
@@ -176,16 +176,16 @@ export const TreesPage: React.FC<TreesPageProps> = ({
         setMessage({
           type: 'success',
           text: !currentVal
-            ? 'Sanction Granted: Repository is now indexed for cross-tree relative matching.'
-            : 'Sanction Withdrawn: Repository secluded to private archive chamber.',
+            ? 'Tree is now discoverable for relative matching.'
+            : 'Tree is now set to private.',
         });
       } else {
         const errData = await res.json();
-        setMessage({ type: 'error', text: errData.error || 'Failed to update repository settings.' });
+        setMessage({ type: 'error', text: errData.error || 'Failed to update tree settings.' });
       }
     } catch (err) {
       console.error('Failed to toggle tree discoverability:', err);
-      setMessage({ type: 'error', text: 'Communication error updating repository charter.' });
+      setMessage({ type: 'error', text: 'Error updating tree settings.' });
     } finally {
       setTimeout(() => setMessage(null), 5000);
     }
@@ -217,14 +217,14 @@ export const TreesPage: React.FC<TreesPageProps> = ({
         if (data.tree) {
           setActiveTreeId(data.tree.treeId);
         }
-        setMessage({ type: 'success', text: `Archival repository "${newTreeName}" chartered successfully.` });
+        setMessage({ type: 'success', text: `Family tree "${newTreeName}" created successfully.` });
       } else {
         const errData = await res.json();
-        setMessage({ type: 'error', text: errData.error || 'Failed to charter repository.' });
+        setMessage({ type: 'error', text: errData.error || 'Failed to create family tree.' });
       }
     } catch (err) {
       console.error('Failed to create tree:', err);
-      setMessage({ type: 'error', text: 'Communication error chartering repository.' });
+      setMessage({ type: 'error', text: 'Error creating family tree.' });
     } finally {
       setCreatingTree(false);
       setTimeout(() => setMessage(null), 5000);
@@ -252,14 +252,14 @@ export const TreesPage: React.FC<TreesPageProps> = ({
         setInviteUid('');
         setInviteEmail('');
         await fetchTreeDetails(activeTreeId);
-        setMessage({ type: 'success', text: 'Curator access credentials granted for this repository.' });
+        setMessage({ type: 'success', text: 'Collaborator invited successfully.' });
       } else {
         const errData = await res.json();
-        setMessage({ type: 'error', text: errData.error || 'Failed to grant curator access.' });
+        setMessage({ type: 'error', text: errData.error || 'Failed to invite collaborator.' });
       }
     } catch (err) {
       console.error('Failed to invite member:', err);
-      setMessage({ type: 'error', text: 'Error executing accession grant.' });
+      setMessage({ type: 'error', text: 'Error inviting collaborator.' });
     } finally {
       setInvitingMember(false);
       setTimeout(() => setMessage(null), 5000);
@@ -282,14 +282,14 @@ export const TreesPage: React.FC<TreesPageProps> = ({
 
       if (res.ok) {
         await fetchTreeDetails(activeTreeId);
-        setMessage({ type: 'success', text: 'Curator access credentials revoked.' });
+        setMessage({ type: 'success', text: 'Collaborator removed successfully.' });
       } else {
         const errData = await res.json();
-        setMessage({ type: 'error', text: errData.error || 'Failed to revoke credentials.' });
+        setMessage({ type: 'error', text: errData.error || 'Failed to remove collaborator.' });
       }
     } catch (err) {
       console.error('Failed to remove member:', err);
-      setMessage({ type: 'error', text: 'Error revoking curator access.' });
+      setMessage({ type: 'error', text: 'Error removing collaborator.' });
     } finally {
       setRemovingMember(false);
       setPendingRemoveMemberUid(null);
@@ -308,14 +308,14 @@ export const TreesPage: React.FC<TreesPageProps> = ({
           <div className="flex items-center gap-2 mb-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#1A1813] border border-[#D4AF37]/40 text-[#D4AF37] text-[10px] font-mono uppercase tracking-[0.2em]">
               <span className="w-1.5 h-1.5 bg-[#D4AF37] rotate-45"></span>
-              ARCHIVAL REPOSITORIES & CHARTERS • FOLIO № 200
+              FAMILY TREES & SETTINGS
             </span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-display font-bold text-[#F4EDE2] tracking-tight uppercase">
-            Lineage Repositories & Graph Chambers
+            Family Trees & Collaboration
           </h1>
           <p className="text-sm font-serif text-[#C4B59D] mt-1.5 max-w-2xl leading-relaxed italic">
-            Configure lineage boundaries, collaborative curatorial permissions, and cryptographic discoverability charters across multi-tenant archives.
+            Manage your family trees, invite collaborators, and adjust privacy settings for relative discovery.
           </p>
         </div>
 
@@ -326,7 +326,7 @@ export const TreesPage: React.FC<TreesPageProps> = ({
             className="inline-flex items-center gap-2.5 bg-gradient-to-b from-[#E6CA65] to-[#B88728] text-[#120F0B] font-display text-xs font-bold uppercase tracking-wider px-5 py-2.5 rounded-sm shadow-[0_2px_12px_rgba(212,175,55,0.25)] hover:shadow-[0_4px_20px_rgba(212,175,55,0.4)] transition-all border border-[#F3E5AB] active:scale-95"
           >
             <Plus className="w-4 h-4" />
-            <span>Charter New Repository</span>
+            <span>Create New Tree</span>
           </button>
         </div>
       </div>
@@ -363,16 +363,16 @@ export const TreesPage: React.FC<TreesPageProps> = ({
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-widest">
-                  CRYPTOGRAPHIC PRIVACY CHARTER
+                  PRIVACY SETTINGS
                 </span>
                 <span className="w-1 h-1 bg-[#D4AF37]/50 rounded-full"></span>
-                <span className="text-[10px] font-mono text-[#8C8275]">ZERO INFORMATION LEAK PROTOCOL</span>
+                <span className="text-[10px] font-mono text-[#8C8275]">LIVING RELATIVE PRIVACY</span>
               </div>
               <h3 className="text-base font-display font-semibold text-[#F4EDE2]">
-                Global Living Relative Cross-Tree Discovery Consent
+                Global Living Relatives Discovery Consent
               </h3>
               <p className="text-xs font-serif text-[#C4B59D] leading-relaxed max-w-3xl">
-                When authorized by your signature, discoverable living individuals in your repositories may be mutually cross-referenced with other accredited genealogical researchers. If either repository maintains strict seclusion, living branches remain protected with absolute zero leakage.
+                When enabled, living individuals in your discoverable family trees can be matched with relatives in other trees. When disabled, information about living individuals is hidden from public search for complete privacy.
               </p>
             </div>
           </div>
@@ -388,10 +388,10 @@ export const TreesPage: React.FC<TreesPageProps> = ({
             }`}
           >
             {updatingConsent
-              ? 'Ratifying...'
+              ? 'Saving...'
               : userOptedIn
-              ? '✓ Charter: Mutual Discovery Granted'
-              : '✕ Charter: Complete Seclusion'}
+              ? '✓ Discovery Allowed'
+              : '✕ Keep Living Private'}
           </button>
         </div>
       </div>
@@ -403,9 +403,9 @@ export const TreesPage: React.FC<TreesPageProps> = ({
           <div className="flex items-center justify-between border-b border-[#D4AF37]/20 pb-2">
             <h2 className="text-sm font-display font-bold text-[#F4EDE2] flex items-center gap-2 uppercase tracking-wider">
               <FolderTree className="w-4 h-4 text-[#D4AF37]" />
-              <span>Chartered Repositories ({trees.length})</span>
+              <span>Your Family Trees ({trees.length})</span>
             </h2>
-            <span className="text-[10px] font-mono text-[#8C8275]">ACCESSION REGISTRY</span>
+            <span className="text-[10px] font-mono text-[#8C8275]">TREES</span>
           </div>
 
           <div className="space-y-3">
@@ -435,7 +435,7 @@ export const TreesPage: React.FC<TreesPageProps> = ({
                         {t.name}
                       </div>
                       <div className="text-[10px] text-[#8C8275] font-mono tracking-wider">
-                        REGISTRY ID: {t.treeId.slice(0, 8).toUpperCase()}...
+                        TREE ID: {t.treeId.slice(0, 8).toUpperCase()}...
                       </div>
                     </div>
                     {t.isDiscoverable ? (
@@ -444,7 +444,7 @@ export const TreesPage: React.FC<TreesPageProps> = ({
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-[9px] font-mono uppercase border border-[#2B333C] bg-[#101317] text-[#8C8275] px-2 py-0.5 rounded-sm">
-                        Secluded
+                        Private
                       </span>
                     )}
                   </div>
@@ -460,23 +460,23 @@ export const TreesPage: React.FC<TreesPageProps> = ({
           </div>
         </div>
 
-        {/* Right Column: Active Repository Dossier & Hand-Drafted Graph Preview */}
+        {/* Right Column: Active Repository Details & Graph Preview */}
         <div className="lg:col-span-2 space-y-6">
           {activeTree ? (
             <div className="deco-card p-6 sm:p-8 space-y-8 bg-[#15191E] border border-[#D4AF37]/30">
-              {/* Dossier Marquee Header */}
+              {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-[#D4AF37]/20 pb-5">
                 <div className="space-y-1.5">
                   <div className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-[0.2em]">
-                    ACTIVE ARCHIVE DOSSIER • VOLUME I
+                    SELECTED FAMILY TREE
                   </div>
                   <h2 className="text-2xl font-display font-bold text-[#F4EDE2] tracking-tight">
                     {activeTree.name}
                   </h2>
                   <div className="text-xs font-mono text-[#A69B8D] flex flex-wrap items-center gap-3">
-                    <span>Curator: {activeTree.ownerId}</span>
+                    <span>Owner: {activeTree.ownerId}</span>
                     <span className="text-[#D4AF37]">✦</span>
-                    <span>Chartered: {new Date(activeTree.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                    <span>Created: {new Date(activeTree.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                   </div>
                 </div>
 
@@ -495,26 +495,26 @@ export const TreesPage: React.FC<TreesPageProps> = ({
                         : 'border-[#2B333C] bg-[#101317] text-[#8C8275] hover:text-[#F4EDE2]'
                     }`}
                   >
-                    {activeTree.isDiscoverable ? '✓ Indexed For Discovery' : 'Private Archive'}
+                    {activeTree.isDiscoverable ? '✓ Discoverable' : 'Private Tree'}
                   </button>
                 </div>
               </div>
 
-              {/* Hand-Drafted Lineage Graph Matrix */}
+              {/* People List */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-[#2B333C] pb-2">
                   <h3 className="text-xs font-display font-bold text-[#F4EDE2] flex items-center gap-2 uppercase tracking-wider">
                     <GitBranch className="w-3.5 h-3.5 text-[#D4AF37]" />
-                    <span>Lineage Roster & Kinship Edges ({activeTreePeople.length} Records)</span>
+                    <span>People in Tree ({activeTreePeople.length})</span>
                   </h3>
                   <span className="text-[10px] font-mono text-[#D4AF37]">
-                    DIRECT DESCENDANCY MAP
+                    MEMBERS
                   </span>
                 </div>
 
                 {activeTreePeople.length === 0 ? (
                   <div className="py-12 text-center border border-dashed border-[#D4AF37]/20 rounded-sm text-xs font-serif text-[#8C8275] bg-[#120F0B]/40">
-                    No individuals recorded in this archival repository chamber.
+                    No individuals added to this family tree yet.
                   </div>
                 ) : (
                   <div className="border border-[#D4AF37]/20 bg-[#101317] p-4 rounded-sm overflow-x-auto">
@@ -536,14 +536,14 @@ export const TreesPage: React.FC<TreesPageProps> = ({
                                 {person.displayName}
                               </div>
                               <div className="text-[10px] text-[#8C8275] font-mono">
-                                FOLIO ID: {person.personId.slice(0, 12).toUpperCase()}
+                                ID: {person.personId.slice(0, 12).toUpperCase()}
                               </div>
                             </div>
 
                             <div className="flex items-center gap-3">
                               {person.isLiving ? (
                                 <span className="text-[9px] font-mono text-[#85C49F] border border-[#4C7A5E]/60 bg-[#162A1F] px-2 py-0.5 rounded-sm uppercase tracking-wider">
-                                  Living Record
+                                  Living
                                 </span>
                               ) : (
                                 <span className="text-[9px] font-mono text-[#8C8275] border border-[#2B333C] bg-[#101317] px-2 py-0.5 rounded-sm uppercase tracking-wider">
@@ -560,12 +560,12 @@ export const TreesPage: React.FC<TreesPageProps> = ({
                 )}
               </div>
 
-              {/* Collaborative Curators & RBAC Permissions */}
+              {/* Collaborators & Permissions */}
               <div className="space-y-4 border-t border-[#D4AF37]/20 pt-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-display font-bold text-[#F4EDE2] flex items-center gap-2 uppercase tracking-wider">
                     <Users className="w-3.5 h-3.5 text-[#D4AF37]" />
-                    <span>Curators & Archival Privileges ({activeTreeDetails?.members?.length || 1})</span>
+                    <span>Collaborators & Members ({activeTreeDetails?.members?.length || 1})</span>
                   </h3>
                   <button
                     id="add_curator_btn"
@@ -573,7 +573,7 @@ export const TreesPage: React.FC<TreesPageProps> = ({
                     className="text-xs font-display font-semibold text-[#D4AF37] hover:underline flex items-center gap-1.5 tracking-wider uppercase"
                   >
                     <Plus className="w-3 h-3" />
-                    <span>Grant Curator Access</span>
+                    <span>Invite Collaborator</span>
                   </button>
                 </div>
 
@@ -588,7 +588,7 @@ export const TreesPage: React.FC<TreesPageProps> = ({
                           {m.displayName || m.email || m.userId}
                         </div>
                         <div className="text-[10px] text-[#8C8275] font-mono">
-                          CURATOR ID: {m.userId}
+                          USER ID: {m.userId}
                         </div>
                       </div>
 
@@ -601,7 +601,7 @@ export const TreesPage: React.FC<TreesPageProps> = ({
                           <button
                             onClick={() => handleRemoveMemberClick(m.userId)}
                             className="text-[#64707D] hover:text-[#9C4A3C] transition-colors p-1 cursor-pointer"
-                            title="Revoke archival privileges"
+                            title="Remove collaborator"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -614,7 +614,7 @@ export const TreesPage: React.FC<TreesPageProps> = ({
             </div>
           ) : (
             <div className="p-12 text-center text-xs font-serif text-[#8C8275] border border-[#D4AF37]/20 rounded-sm bg-[#15191E]">
-              Select a lineage repository from the accession ledger to inspect its charter.
+              Select a family tree from the list to view its details and members.
             </div>
           )}
         </div>
@@ -630,18 +630,18 @@ export const TreesPage: React.FC<TreesPageProps> = ({
           >
             <div className="flex items-center justify-between border-b border-[#D4AF37]/30 pb-3">
               <h2 className="text-lg font-display font-bold text-[#F4EDE2] uppercase tracking-wider">
-                Charter Lineage Repository
+                Create Family Tree
               </h2>
-              <span className="text-[10px] font-mono text-[#D4AF37]">FOUNDATION PROTOCOL</span>
+              <span className="text-[10px] font-mono text-[#D4AF37]">NEW TREE</span>
             </div>
 
             <form onSubmit={handleCreateTree} className="space-y-4 text-xs font-sans">
               <div className="space-y-1.5">
-                <label className="text-[#C4B59D] font-display font-medium uppercase tracking-wider text-[11px]">Repository Title</label>
+                <label className="text-[#C4B59D] font-display font-medium uppercase tracking-wider text-[11px]">Tree Name</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g., Montclair Ancestral Lineage & Descendancy"
+                  placeholder="e.g., Smith Family Tree"
                   value={newTreeName}
                   onChange={(e) => setNewTreeName(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-[#101317] border border-[#D4AF37]/30 rounded-sm text-[#F4EDE2] focus:outline-none focus:border-[#D4AF37]"
@@ -649,10 +649,10 @@ export const TreesPage: React.FC<TreesPageProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[#C4B59D] font-display font-medium uppercase tracking-wider text-[11px]">Provenance & Historical Context</label>
+                <label className="text-[#C4B59D] font-display font-medium uppercase tracking-wider text-[11px]">Description / Notes</label>
                 <textarea
                   rows={3}
-                  placeholder="Geographic scope, parish registers, ancestral regional migrations..."
+                  placeholder="Notes about family origins, geographic regions, or ancestral branches..."
                   value={newTreeDesc}
                   onChange={(e) => setNewTreeDesc(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-[#101317] border border-[#D4AF37]/30 rounded-sm text-[#F4EDE2] focus:outline-none focus:border-[#D4AF37]"
@@ -668,7 +668,7 @@ export const TreesPage: React.FC<TreesPageProps> = ({
                   className="accent-[#D4AF37] w-4 h-4 cursor-pointer"
                 />
                 <label htmlFor="discoverable-check" className="text-[#F4EDE2] font-serif text-xs cursor-pointer">
-                  Sanction repository for mutual cross-archive relative matching
+                  Make this tree discoverable for relative suggestions
                 </label>
               </div>
 
@@ -685,7 +685,7 @@ export const TreesPage: React.FC<TreesPageProps> = ({
                   disabled={creatingTree}
                   className="px-6 py-2.5 bg-gradient-to-b from-[#E6CA65] to-[#B88728] text-[#120F0B] font-display font-bold uppercase text-xs rounded-sm shadow-md"
                 >
-                  {creatingTree ? 'Chartering...' : 'Charter Repository'}
+                  {creatingTree ? 'Creating...' : 'Create Tree'}
                 </button>
               </div>
             </form>
@@ -703,17 +703,17 @@ export const TreesPage: React.FC<TreesPageProps> = ({
           >
             <div className="flex items-center justify-between border-b border-[#D4AF37]/30 pb-3">
               <h2 className="text-lg font-display font-bold text-[#F4EDE2] uppercase tracking-wider">
-                Grant Curator Access Credentials
+                Invite Collaborator
               </h2>
-              <span className="text-[10px] font-mono text-[#D4AF37]">ACCESS ROSTER</span>
+              <span className="text-[10px] font-mono text-[#D4AF37]">PERMISSIONS</span>
             </div>
 
             <form onSubmit={handleInviteMember} className="space-y-4 text-xs font-sans">
               <div className="space-y-1.5">
-                <label className="text-[#C4B59D] font-display font-medium uppercase tracking-wider text-[11px]">Curator Identifier or Email</label>
+                <label className="text-[#C4B59D] font-display font-medium uppercase tracking-wider text-[11px]">User ID or Email</label>
                 <input
                   type="text"
-                  placeholder="e.g. user-sophia-chen or archivist@familygraph.internal"
+                  placeholder="e.g. user@example.com or user-id"
                   value={inviteUid}
                   onChange={(e) => setInviteUid(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-[#101317] border border-[#D4AF37]/30 rounded-sm text-[#F4EDE2] focus:outline-none focus:border-[#D4AF37]"
@@ -721,14 +721,14 @@ export const TreesPage: React.FC<TreesPageProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[#C4B59D] font-display font-medium uppercase tracking-wider text-[11px]">Access Privilege Role</label>
+                <label className="text-[#C4B59D] font-display font-medium uppercase tracking-wider text-[11px]">Role & Permissions</label>
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as any)}
                   className="w-full px-3.5 py-2.5 bg-[#101317] border border-[#D4AF37]/30 rounded-sm text-[#F4EDE2] focus:outline-none focus:border-[#D4AF37] cursor-pointer"
                 >
-                  <option value="editor">Editor — Full Claim Ingestion & Kinship Drafting Privileges</option>
-                  <option value="viewer">Viewer — Read-Only Archival Inspection</option>
+                  <option value="editor">Editor — Can view, add, and edit people and relationships</option>
+                  <option value="viewer">Viewer — Can only view records</option>
                 </select>
               </div>
 
@@ -745,7 +745,7 @@ export const TreesPage: React.FC<TreesPageProps> = ({
                   disabled={invitingMember}
                   className="px-6 py-2.5 bg-gradient-to-b from-[#E6CA65] to-[#B88728] text-[#120F0B] font-display font-bold uppercase text-xs rounded-sm shadow-md"
                 >
-                  {invitingMember ? 'Granting...' : 'Grant Access Credentials'}
+                  {invitingMember ? 'Inviting...' : 'Invite Collaborator'}
                 </button>
               </div>
             </form>
@@ -757,10 +757,10 @@ export const TreesPage: React.FC<TreesPageProps> = ({
         isOpen={Boolean(pendingRemoveMemberUid)}
         onClose={() => setPendingRemoveMemberUid(null)}
         onConfirm={executeConfirmRemoveMember}
-        title="Revoke Curator Access"
-        description="Are you sure you want to revoke archival access and drafting credentials for this collaborator?"
-        confirmLabel="Revoke Access"
-        cancelLabel="Keep Privileges"
+        title="Remove Collaborator"
+        description="Are you sure you want to remove this collaborator from this tree?"
+        confirmLabel="Remove"
+        cancelLabel="Cancel"
         isLoading={removingMember}
         isDestructive={true}
       />

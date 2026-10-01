@@ -7,6 +7,7 @@ import { TreesPage } from './components/TreesPage.tsx';
 import { DuplicateReviewPage } from './components/DuplicateReviewPage.tsx';
 import { AuditLogPage } from './components/AuditLogPage.tsx';
 import { AboutArchitecturePage } from './components/AboutArchitecturePage.tsx';
+import { AuthModal } from './components/AuthModal.tsx';
 import { ActiveView } from './types.ts';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -108,6 +109,8 @@ export default function App() {
             )}
           </AnimatePresence>
         </main>
+
+        <AuthModal />
       </div>
     </AuthProvider>
   );

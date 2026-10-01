@@ -373,7 +373,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
           className="inline-flex items-center gap-2 text-xs font-deco font-semibold text-[#A89F91] hover:text-[#F5DE98] transition-colors py-2 px-3.5 border border-[#222B38] bg-[#0A0E15] hover:bg-[#131A24] tracking-wider"
         >
           <ArrowLeft className="w-3.5 h-3.5 text-[#C5A059]" />
-          <span>RETURN TO REGISTRY</span>
+          <span>BACK TO PEOPLE</span>
         </button>
 
         <div className="flex flex-wrap items-center gap-2.5">
@@ -383,7 +383,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
             className="inline-flex items-center gap-1.5 bg-[#0B221B] hover:bg-[#113328] text-[#52B395] border border-[#1D5C4A] font-deco font-semibold px-4 py-2 text-xs transition-all shadow-sm active:scale-95 tracking-wider"
           >
             <Sparkles className="w-3.5 h-3.5 text-[#52B395]" />
-            <span>DISCOVER KIN</span>
+            <span>FIND RELATIVES</span>
           </button>
 
           <button
@@ -395,7 +395,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
             className="inline-flex items-center gap-1.5 bg-[#0D1219] hover:bg-[#131A24] text-[#F5DE98] border border-[#C5A059]/40 hover:border-[#C5A059] font-deco font-semibold px-4 py-2 text-xs transition-colors tracking-wider"
           >
             <Compass className="w-3.5 h-3.5 text-[#C5A059]" />
-            <span>KINSHIP CALC</span>
+            <span>CALCULATE RELATIONSHIP</span>
           </button>
 
           {((displayPerson as any).canEdit ?? true) && (
@@ -405,19 +405,19 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
               className="inline-flex items-center gap-2 bg-gradient-to-r from-[#C5A059] via-[#E2BA6E] to-[#9E782F] hover:from-[#F5DE98] hover:to-[#C5A059] text-[#07090D] font-deco font-bold tracking-wider px-4 py-2 text-xs transition-all shadow-[0_0_12px_rgba(197,160,89,0.3)] active:scale-95"
             >
               <Plus className="w-3.5 h-3.5 text-[#07090D]" />
-              <span>ASSERT SOURCED CLAIM</span>
+              <span>ADD FACT</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Person Dossier Header Card */}
+      {/* Person Header Card */}
       <div className="border border-[#C5A059]/40 bg-[#0A0E15] p-7 sm:p-9 space-y-6 shadow-xl relative deco-corner-accent">
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2.5">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-mono border border-[#C5A059]/50 bg-[#07090D] text-[#F5DE98] font-semibold">
-                DOSSIER UUID: {displayPerson.personId.slice(0, 12)}...
+                PERSON ID: {displayPerson.personId.slice(0, 12)}...
               </span>
 
               {/* RBAC Tree Role */}
@@ -482,16 +482,16 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
         </div>
       </div>
 
-      {/* Claim-Centric Evidential Evaluation Ledger */}
+      {/* Facts & Sources Ledger */}
       <div className="border border-[#C5A059]/30 bg-[#0A0E15] p-7 space-y-6 shadow-xl deco-corner-accent">
         <div className="flex items-center justify-between border-b border-[#222B38] pb-4">
           <div>
             <h2 className="text-base font-deco font-bold text-[#F5DE98] flex items-center gap-2.5">
               <Layers className="w-4 h-4 text-[#C5A059]" />
-              <span>Evidential Claims Ledger & Competing Assertions</span>
+              <span>Facts, Events & Sources</span>
             </h2>
             <p className="text-xs text-[#A89F91] mt-1 font-reading">
-              Genealogical attributes resolved through multi-tier evidential reliability arbitration.
+              Biographical facts and details backed by historical sources.
             </p>
           </div>
         </div>
@@ -539,7 +539,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
                       </div>
                     ) : (
                       <span className="text-xs text-[#6E675C] italic">
-                        No assertions recorded in archive
+                        No details recorded yet
                       </span>
                     )}
                   </div>
@@ -553,7 +553,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
                         }}
                         className="text-[11px] font-deco font-semibold text-[#C5A059] hover:underline px-2 py-1 tracking-wider"
                       >
-                        + ASSERT
+                        + ADD
                       </button>
                     )}
                     {isExpanded ? (
@@ -591,28 +591,28 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
                                   </span>
                                   {isBest && (
                                     <span className="text-[9px] font-mono uppercase bg-[#1D5C4A] text-[#52B395] px-2 py-0.5 font-bold tracking-wider">
-                                      CANONICAL EVIDENCE
+                                      PRIMARY RECORD
                                     </span>
                                   )}
                                   {isSuperseded && (
                                     <span className="text-[9px] font-mono uppercase bg-[#222B38] text-[#A89F91] px-2 py-0.5">
-                                      SUPERSEDED
+                                      REPLACED
                                     </span>
                                   )}
                                 </div>
 
                                 <div className="text-[11px] text-[#A89F91] space-x-2 font-reading">
                                   <span className="font-semibold text-[#E8DFD0]">
-                                    Source: {SOURCE_TYPE_LABELS[(claim.source?.sourceType as any)]?.label || claim.source?.sourceType || 'Assertion'}
+                                    Source: {SOURCE_TYPE_LABELS[(claim.source?.sourceType as any)]?.label || claim.source?.sourceType || 'Record'}
                                   </span>
                                   <span>•</span>
-                                  <span>Citation: {claim.source?.citation || 'General Archive Entry'}</span>
+                                  <span>Citation: {claim.source?.citation || 'General Record'}</span>
                                 </div>
                               </div>
 
                               <div className="flex items-center gap-3 shrink-0">
                                 <div className="text-right text-[11px] font-mono text-[#A89F91]">
-                                  <div>Tier {claim.source?.reliabilityTier || 1}/5</div>
+                                  <div>Quality: {claim.source?.reliabilityTier || 1}/5</div>
                                   <div>Confidence: {claim.confidence ?? 50}%</div>
                                 </div>
                               </div>
@@ -622,7 +622,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
                       </div>
                     ) : (
                       <div className="text-xs text-[#A89F91] py-2 font-reading">
-                        No assertions recorded for this attribute. Click "+ ASSERT" to register historical citations.
+                        No details recorded for this attribute. Click "+ ADD" to add information.
                       </div>
                     )}
                   </div>
@@ -633,14 +633,14 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
         </div>
       </div>
 
-      {/* Immediate Kinship Dossiers */}
+      {/* Immediate Family Sections */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Parents Ledger */}
+        {/* Parents */}
         <div className="border border-[#C5A059]/30 bg-[#0A0E15] p-6 space-y-4 shadow-md deco-corner-accent">
           <div className="flex items-center justify-between border-b border-[#222B38] pb-3">
             <h2 className="text-sm font-deco font-bold text-[#F5DE98] flex items-center gap-2">
               <Users className="w-4 h-4 text-[#C5A059]" />
-              <span>Parental Lineages ({parents.length})</span>
+              <span>Parents ({parents.length})</span>
             </h2>
             {((displayPerson as any).canEdit ?? true) && (
               <button
@@ -649,7 +649,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
                 className="text-xs text-[#C5A059] hover:underline flex items-center gap-1 font-deco font-semibold tracking-wider"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>LINK PARENT</span>
+                <span>ADD PARENT</span>
               </button>
             )}
           </div>
@@ -657,11 +657,11 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
           {parents.length === 0 ? (
             loadingLineage ? (
               <div className="text-xs text-[#A89F91] py-6 text-center border border-[#222B38] bg-[#07090D] font-mono animate-pulse">
-                Retrieving lineage links...
+                Loading parents...
               </div>
             ) : (
               <div className="text-xs text-[#6E675C] py-6 text-center border border-[#222B38] bg-[#07090D] font-reading">
-                No parent linkages recorded in graph.
+                No parents linked yet.
               </div>
             )
           ) : (
@@ -707,12 +707,12 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
           )}
         </div>
 
-        {/* Children Ledger */}
+        {/* Children */}
         <div className="border border-[#C5A059]/30 bg-[#0A0E15] p-6 space-y-4 shadow-md deco-corner-accent">
           <div className="flex items-center justify-between border-b border-[#222B38] pb-3">
             <h2 className="text-sm font-deco font-bold text-[#F5DE98] flex items-center gap-2">
               <Users className="w-4 h-4 text-[#C5A059]" />
-              <span>Descendant Children ({children.length})</span>
+              <span>Children ({children.length})</span>
             </h2>
             {((displayPerson as any).canEdit ?? true) && (
               <button
@@ -721,7 +721,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
                 className="text-xs text-[#C5A059] hover:underline flex items-center gap-1 font-deco font-semibold tracking-wider"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>LINK CHILD</span>
+                <span>ADD CHILD</span>
               </button>
             )}
           </div>
@@ -729,11 +729,11 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
           {children.length === 0 ? (
             loadingLineage ? (
               <div className="text-xs text-[#A89F91] py-6 text-center border border-[#222B38] bg-[#07090D] font-mono animate-pulse">
-                Retrieving lineage links...
+                Loading children...
               </div>
             ) : (
               <div className="text-xs text-[#6E675C] py-6 text-center border border-[#222B38] bg-[#07090D] font-reading">
-                No descendant records registered.
+                No children linked yet.
               </div>
             )
           ) : (
@@ -780,12 +780,12 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
         </div>
       </div>
 
-      {/* Partnerships & Unions */}
+      {/* Partnerships & Spouses */}
       <div className="border border-[#C5A059]/30 bg-[#0A0E15] p-6 space-y-4 shadow-md deco-corner-accent">
         <div className="flex items-center justify-between border-b border-[#222B38] pb-3">
           <h2 className="text-sm font-deco font-bold text-[#F5DE98] flex items-center gap-2">
             <Heart className="w-4 h-4 text-[#C5A059]" />
-            <span>Spousal Unions & Partnerships ({partnerships.length})</span>
+            <span>Spouses & Partners ({partnerships.length})</span>
           </h2>
           {((displayPerson as any).canEdit ?? true) && (
             <button
@@ -794,7 +794,7 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
               className="text-xs text-[#C5A059] hover:underline flex items-center gap-1 font-deco font-semibold tracking-wider"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>RECORD UNION</span>
+              <span>ADD SPOUSE / PARTNER</span>
             </button>
           )}
         </div>
@@ -802,11 +802,11 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
         {partnerships.length === 0 ? (
           loadingLineage ? (
             <div className="text-xs text-[#A89F91] py-6 text-center border border-[#222B38] bg-[#07090D] font-mono animate-pulse">
-              Retrieving union records...
+              Loading partners...
             </div>
           ) : (
             <div className="text-xs text-[#6E675C] py-6 text-center border border-[#222B38] bg-[#07090D] font-reading">
-              No marriage or partnership unions registered.
+              No spouses or partners linked yet.
             </div>
           )
         ) : (
@@ -855,16 +855,16 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
         )}
       </div>
 
-      {/* Transitive Ancestor Closure Table ($O(1)$ Reachability) */}
+      {/* Ancestors List */}
       <div className="border border-[#C5A059]/30 bg-[#0A0E15] p-6 space-y-4 shadow-md deco-corner-accent">
         <div className="flex items-center justify-between border-b border-[#222B38] pb-3">
           <div>
             <h2 className="text-sm font-deco font-bold text-[#F5DE98] flex items-center gap-2">
               <Workflow className="w-4 h-4 text-[#52B395]" />
-              <span>Transitive Ancestor Closure Matrix (O(1) Reachability Index)</span>
+              <span>Ancestors & Pedigree Tree</span>
             </h2>
             <p className="text-xs text-[#A89F91] mt-1 font-reading">
-              All indexed ascendants across generations, resolving cousin marriages & pedigree collapse.
+              All recorded direct ancestors across generations.
             </p>
           </div>
           <button
@@ -878,11 +878,11 @@ export const PersonDetailPage: React.FC<PersonDetailPageProps> = ({
         {showClosureDetails && (
           loadingAncestors ? (
             <div className="py-6 text-center text-xs font-mono text-[#A89F91]">
-              Computing ancestor closure matrix...
+              Loading ancestors...
             </div>
           ) : ancestors.length === 0 ? (
             <div className="text-xs text-[#6E675C] py-6 text-center border border-[#222B38] bg-[#07090D] font-reading">
-              Root progenitor (no antecedent lines linked).
+              No ancestors linked yet for this person.
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">

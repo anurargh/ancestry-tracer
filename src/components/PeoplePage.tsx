@@ -198,19 +198,19 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      {/* Art Deco Master Register Banner */}
+      {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 border-b border-[#C5A059]/30 pb-7">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2 text-[10px] font-mono text-[#C5A059] uppercase tracking-[0.25em]">
-            <span>❖ REGISTRY OF INDIVIDUALS</span>
+            <span>❖ PEOPLE DIRECTORY</span>
             <span className="text-[#6E675C]">•</span>
-            <span>FOLIO SERIES № 100</span>
+            <span>RECORDS</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-deco font-bold text-[#F5DE98] tracking-wide">
-            The Canonical Person Registry
+            People & Family Members
           </h1>
           <p className="text-sm text-[#E8DFD0]/80 font-reading max-w-xl">
-            Archival records compiled from multi-tier sourced historical claims with immutable provenance trails.
+            Search and manage individual family members, track vital details, and link supporting records.
           </p>
         </div>
 
@@ -224,7 +224,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
             className="inline-flex items-center gap-2.5 bg-[#0D1219] hover:bg-[#131A24] text-[#F5DE98] border border-[#C5A059]/40 hover:border-[#C5A059] px-4 py-2.5 text-xs font-deco font-semibold tracking-wider transition-colors shadow-sm"
           >
             <Compass className="w-4 h-4 text-[#C5A059]" />
-            <span>KINSHIP CALCULATOR</span>
+            <span>CALCULATE RELATIONSHIP</span>
           </button>
 
           <button
@@ -233,7 +233,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
             className="inline-flex items-center gap-2.5 bg-gradient-to-r from-[#C5A059] via-[#E2BA6E] to-[#9E782F] hover:from-[#F5DE98] hover:to-[#C5A059] text-[#07090D] font-deco font-bold tracking-wider px-5 py-2.5 text-xs transition-all shadow-[0_0_15px_rgba(197,160,89,0.3)] active:scale-95"
           >
             <Plus className="w-4 h-4 text-[#07090D]" />
-            <span>ARCHIVE NEW PERSON</span>
+            <span>ADD PERSON</span>
           </button>
         </div>
       </div>
@@ -247,7 +247,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
             <input
               id="search-people-input"
               type="text"
-              placeholder="Search registry by name, birthplace, occupation, or UUID..."
+              placeholder="Search by name, birthplace, occupation, or ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-[#07090D] border border-[#222B38] focus:border-[#C5A059] text-xs text-[#F5DE98] placeholder:text-[#6E675C] focus:outline-none font-sans transition-colors"
@@ -277,13 +277,13 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
 
             {/* Vitality Status */}
             <div className="flex items-center gap-1.5 bg-[#07090D] border border-[#222B38] px-3 py-1.5">
-              <span className="text-[#A89F91] font-mono text-[11px]">Vitality:</span>
+              <span className="text-[#A89F91] font-mono text-[11px]">Status:</span>
               <select
                 value={livingFilter}
                 onChange={(e) => setLivingFilter(e.target.value as any)}
                 className="bg-transparent text-[#F5DE98] focus:outline-none cursor-pointer text-xs pr-1 font-sans"
               >
-                <option value="all" className="bg-[#0D1219]">All Records</option>
+                <option value="all" className="bg-[#0D1219]">All Statuses</option>
                 <option value="living" className="bg-[#0D1219]">Living Only</option>
                 <option value="deceased" className="bg-[#0D1219]">Deceased Only</option>
               </select>
@@ -308,7 +308,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
             <div className="flex items-center border border-[#222B38] bg-[#07090D] p-0.5">
               <button
                 onClick={() => setViewMode('ledger')}
-                title="Ledger Table View"
+                title="Table View"
                 className={`p-1.5 transition-colors ${
                   viewMode === 'ledger'
                     ? 'bg-[#131A24] text-[#F5DE98] border border-[#C5A059]/40'
@@ -319,7 +319,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
               </button>
               <button
                 onClick={() => setViewMode('cards')}
-                title="Archival Dossier Cards"
+                title="Cards View"
                 className={`p-1.5 transition-colors ${
                   viewMode === 'cards'
                     ? 'bg-[#131A24] text-[#F5DE98] border border-[#C5A059]/40'
@@ -335,7 +335,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
         {/* Active Filter Metrics */}
         <div className="flex items-center justify-between text-[10px] text-[#A89F91] font-mono pt-2 border-t border-[#222B38]">
           <span>
-            RECORD ENTRIES INDEXED: <strong className="text-[#F5DE98]">{filteredPeople.length}</strong> of{' '}
+            PEOPLE FOUND: <strong className="text-[#F5DE98]">{filteredPeople.length}</strong> of{' '}
             {people.length}
           </span>
           {searchQuery && (
@@ -353,7 +353,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
       {loading ? (
         <div className="py-28 text-center space-y-4">
           <div className="w-10 h-10 border-2 border-[#222B38] border-t-[#C5A059] animate-spin mx-auto"></div>
-          <p className="text-xs font-mono tracking-widest text-[#A89F91] uppercase">Retrieving Vault Registry from Cloud SQL...</p>
+          <p className="text-xs font-mono tracking-widest text-[#A89F91] uppercase">Loading people records...</p>
         </div>
       ) : error ? (
         <div className="p-5 border border-[#5E1D31] bg-[#240B13] text-[#F5DE98] text-xs font-mono">
@@ -363,32 +363,32 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
         <div className="py-20 text-center border border-[#222B38] p-10 bg-[#0A0E15] space-y-4 deco-corner-accent">
           <FileText className="w-12 h-12 text-[#6E675C] mx-auto mb-2" />
           <h3 className="text-lg font-deco font-bold text-[#F5DE98]">
-            No Archival Records Match Criteria
+            No People Found
           </h3>
           <p className="text-xs text-[#A89F91] max-w-md mx-auto font-reading">
-            Adjust search criteria or archive a new historical soul into the repository ledger.
+            Try adjusting your search criteria or add a new person to your family tree.
           </p>
           <button
             onClick={() => setCreateModalOpen(true)}
             className="mt-4 inline-flex items-center gap-2 bg-[#C5A059] text-[#07090D] font-deco font-bold px-5 py-2 text-xs transition-all shadow-md"
           >
             <Plus className="w-4 h-4 text-[#07090D]" />
-            <span>ARCHIVE RECORD</span>
+            <span>ADD PERSON</span>
           </button>
         </div>
       ) : viewMode === 'ledger' ? (
-        /* Institutional Art Deco Ledger Table View */
+        /* Ledger Table View */
         <div className="border border-[#C5A059]/30 bg-[#0A0E15] overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-[#07090D] border-b border-[#C5A059]/30 text-[#C5A059] font-deco uppercase text-[10px] tracking-[0.15em]">
-                  <th className="py-4 px-5">FOLIO IDENTIFIER</th>
-                  <th className="py-4 px-5">ASSERTED NAME</th>
-                  <th className="py-4 px-5">BIRTH RECORD</th>
-                  <th className="py-4 px-5">LOCATION / BIRTHPLACE</th>
-                  <th className="py-4 px-5">VITALITY & LINEAGE</th>
-                  <th className="py-4 px-5">EVIDENCE TIER</th>
+                  <th className="py-4 px-5">ID</th>
+                  <th className="py-4 px-5">NAME</th>
+                  <th className="py-4 px-5">BIRTH DATE</th>
+                  <th className="py-4 px-5">BIRTHPLACE</th>
+                  <th className="py-4 px-5">STATUS</th>
+                  <th className="py-4 px-5">SOURCES</th>
                   <th className="py-4 px-5 text-right">ACTION</th>
                 </tr>
               </thead>
@@ -477,7 +477,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
                       {/* Action */}
                       <td className="py-4 px-5 text-right">
                         <span className="inline-flex items-center gap-1.5 text-xs text-[#C5A059] font-deco font-semibold tracking-wider group-hover:translate-x-1 transition-transform">
-                          <span>INSPECT</span>
+                          <span>VIEW</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </span>
                       </td>
@@ -569,10 +569,10 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
                 {/* Card Footer */}
                 <div className="pt-4 border-t border-[#222B38] flex items-center justify-between text-xs">
                   <span className="text-[10px] font-mono text-[#6E675C]">
-                    {person.claims?.length || 0} claims sourced
+                    {person.claims?.length || 0} facts documented
                   </span>
                   <span className="text-xs font-deco font-semibold text-[#C5A059] flex items-center gap-1.5 group-hover:translate-x-1 transition-transform tracking-wider">
-                    <span>DOSSIER</span>
+                    <span>VIEW</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </span>
                 </div>
