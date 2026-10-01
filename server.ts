@@ -53,10 +53,20 @@ import {
   computeSha256,
 } from './src/db/media.ts';
 import { MatchBand, MatchStatus } from './src/types.ts';
+import { createPool } from './src/db/index.ts';
+import { initDatabaseSchema } from './src/db/initSchema.ts';
 
 async function startServer() {
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
+  // Auto-initialize relational tables and indexes in PostgreSQL if they do not exist
+  try {
+    const pool = createPool();
+    await initDatabaseSchema(pool);
+  } catch (dbInitErr: any) {
+    console.error('Failed to auto-initialize database schema on startup:', dbInitErr?.message || dbInitErr);
+  }
 
   app.use(express.json({ limit: '25mb' }));
   app.use(express.urlencoded({ extended: true, limit: '25mb' }));
