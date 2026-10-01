@@ -22,10 +22,10 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-[#10161C] text-[#EDE7DF] flex flex-col font-sans selection:bg-[#B8873F]/25 selection:text-[#F3ECDD]">
+      <div className="min-h-screen bg-[#10161C] text-[#EDE7DF] flex flex-col font-sans selection:bg-[#B8873F]/25 selection:text-[#F3ECDD] w-full max-w-full overflow-x-hidden">
         <Header activeView={activeView} setActiveView={setActiveView} />
 
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col w-full max-w-full overflow-x-hidden">
           <AnimatePresence mode="wait">
             {activeView === 'landing' && (
               <motion.div

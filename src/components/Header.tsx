@@ -64,36 +64,36 @@ export const Header: React.FC<HeaderProps> = ({ activeView, setActiveView }) => 
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-[#0A0E15]/95 backdrop-blur-md border-b border-[#C5A059]/30 text-[#E8DFD0] shadow-xl">
+    <header className="sticky top-0 z-40 bg-[#0A0E15]/95 backdrop-blur-md border-b border-[#C5A059]/30 text-[#E8DFD0] shadow-xl w-full max-w-full overflow-hidden">
       {/* Art Deco Gilded Top Line Accent */}
       <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-[#C5A059] to-transparent opacity-80" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4 w-full">
         {/* Brand Logo & Plaque */}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-2 sm:gap-6 min-w-0">
           <button
             id="brand-logo-btn"
             onClick={() => setActiveView('landing')}
-            className="flex items-center gap-3.5 text-left group focus-visible:ring-1 focus-visible:ring-[#C5A059] focus:outline-none py-1 pr-3 transition-transform duration-300 hover:scale-[1.02]"
+            className="flex items-center gap-2.5 sm:gap-3.5 text-left group focus-visible:ring-1 focus-visible:ring-[#C5A059] focus:outline-none py-1 pr-1 sm:pr-3 transition-transform duration-300 hover:scale-[1.02] shrink-0"
           >
             {/* Geometric Brass Medallion */}
-            <div className="relative w-10 h-10 border border-[#C5A059] bg-[#0E1520] flex items-center justify-center text-[#F5DE98] shadow-[0_0_15px_rgba(197,160,89,0.2)] rotate-45 transition-transform group-hover:rotate-90 duration-500">
+            <div className="relative w-8 h-8 sm:w-10 sm:h-10 border border-[#C5A059] bg-[#0E1520] flex items-center justify-center text-[#F5DE98] shadow-[0_0_15px_rgba(197,160,89,0.2)] rotate-45 transition-transform group-hover:rotate-90 duration-500 shrink-0">
               <div className="absolute inset-1 border border-[#C5A059]/40 -rotate-45 flex items-center justify-center">
-                <span className="font-display text-base font-black text-[#F5DE98]">❖</span>
+                <span className="font-display text-xs sm:text-base font-black text-[#F5DE98]">❖</span>
               </div>
             </div>
-            <div className="pl-1">
-              <div className="font-deco font-bold text-lg tracking-[0.18em] text-[#F5DE98] flex items-center gap-2 leading-tight">
+            <div className="pl-0.5 sm:pl-1">
+              <div className="font-deco font-bold text-sm sm:text-lg tracking-[0.15em] sm:tracking-[0.18em] text-[#F5DE98] flex items-center gap-2 leading-tight">
                 <span>FAMILYGRAPH</span>
               </div>
-              <div className="text-[9px] text-[#A89F91] tracking-[0.25em] uppercase font-mono mt-0.5">
+              <div className="hidden sm:block text-[9px] text-[#A89F91] tracking-[0.25em] uppercase font-mono mt-0.5">
                 FAMILY TREE PLATFORM
               </div>
             </div>
           </button>
 
-          {/* Symmetrical Navigation */}
-          <nav className="hidden lg:flex items-center gap-1.5 ml-2 border-l border-[#222B38] pl-5">
+          {/* Symmetrical Navigation - Shown on XL screens where ample width is guaranteed */}
+          <nav className="hidden xl:flex items-center gap-1 ml-2 border-l border-[#222B38] pl-4 shrink-0">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeView === item.view;
@@ -102,16 +102,16 @@ export const Header: React.FC<HeaderProps> = ({ activeView, setActiveView }) => 
                   key={item.view}
                   id={`nav-${item.view}-btn`}
                   onClick={() => setActiveView(item.view)}
-                  className={`relative px-3.5 py-2 text-left transition-all duration-300 group ${
+                  className={`relative px-2.5 py-1.5 text-left transition-all duration-300 group cursor-pointer ${
                     isActive
                       ? 'text-[#F5DE98]'
                       : 'text-[#A89F91] hover:text-[#E8DFD0]'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <Icon className={`w-3.5 h-3.5 transition-transform group-hover:scale-110 ${isActive ? 'text-[#C5A059]' : 'text-[#6E675C]'}`} />
                     <div>
-                      <div className="font-deco text-xs tracking-wider uppercase leading-none font-semibold">
+                      <div className="font-deco text-xs tracking-wider uppercase leading-none font-semibold whitespace-nowrap">
                         {item.label}
                       </div>
                     </div>
@@ -131,9 +131,9 @@ export const Header: React.FC<HeaderProps> = ({ activeView, setActiveView }) => 
         </div>
 
         {/* Database & User Authentication Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Cloud SQL PostgreSQL Inscribed Plaque */}
-          <div className="hidden xl:flex items-center gap-1.5 px-3 py-1 border border-[#1D5C4A]/60 bg-[#0B221B]/80 text-[#52B395] text-[10px] font-mono tracking-wider shadow-inner">
+          <div className="hidden 2xl:flex items-center gap-1.5 px-3 py-1 border border-[#1D5C4A]/60 bg-[#0B221B]/80 text-[#52B395] text-[10px] font-mono tracking-wider shadow-inner">
             <span className="w-1.5 h-1.5 bg-[#52B395] animate-pulse"></span>
             <Database className="w-3.5 h-3.5 text-[#52B395]" />
             <span className="text-[#A89F91]">POSTGRESQL CONNECTED</span>
@@ -147,7 +147,7 @@ export const Header: React.FC<HeaderProps> = ({ activeView, setActiveView }) => 
               <button
                 id="user-account-dropdown-btn"
                 onClick={() => setAccountMenuOpen(!accountMenuOpen)}
-                className="flex items-center gap-2.5 bg-[#0D1219] hover:bg-[#141B24] border border-[#C5A059]/60 hover:border-[#C5A059] p-1.5 pr-3 transition-all shadow-sm"
+                className="flex items-center gap-2 sm:gap-2.5 bg-[#0D1219] hover:bg-[#141B24] border border-[#C5A059]/60 hover:border-[#C5A059] p-1.5 pr-2 sm:pr-3 transition-all shadow-sm"
               >
                 {'photoURL' in user && user.photoURL ? (
                   <img
@@ -211,7 +211,7 @@ export const Header: React.FC<HeaderProps> = ({ activeView, setActiveView }) => 
                             switchDemoPersona(p.id);
                             setAccountMenuOpen(false);
                           }}
-                          className="px-2 py-1 text-[10px] font-deco text-[#EDE7DF] bg-[#141B26] hover:bg-[#1E293B] border border-[#C5A059]/30 hover:border-[#C5A059] truncate"
+                          className="px-2 py-1 text-[10px] font-deco text-[#EDE7DF] bg-[#141B26] hover:bg-[#1E293B] border border-[#C5A059]/30 hover:border-[#C5A059] truncate cursor-pointer"
                           title={p.displayName}
                         >
                           {p.displayName.split(' ')[0]}
@@ -227,7 +227,7 @@ export const Header: React.FC<HeaderProps> = ({ activeView, setActiveView }) => 
                         signOutUser();
                         setAccountMenuOpen(false);
                       }}
-                      className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-[#1A1112] hover:bg-[#2B1113] text-[#FFA8A8] border border-[#E05252]/40 hover:border-[#E05252] text-xs font-deco font-semibold tracking-wider transition-colors"
+                      className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-[#1A1112] hover:bg-[#2B1113] text-[#FFA8A8] border border-[#E05252]/40 hover:border-[#E05252] text-xs font-deco font-semibold tracking-wider transition-colors cursor-pointer"
                     >
                       <LogOut className="w-3.5 h-3.5" />
                       <span>SIGN OUT</span>
@@ -239,8 +239,8 @@ export const Header: React.FC<HeaderProps> = ({ activeView, setActiveView }) => 
           ) : (
             /* DEMO / GUEST USER - Show Persona Switcher AND Sign In / Register Buttons */
             <div className="flex items-center gap-2">
-              {/* Persona Switcher for Sample Archive Exploration */}
-              <div className="hidden md:flex items-center gap-2 bg-[#0D1219] border border-[#C5A059]/40 px-3 py-1.5 text-xs shadow-sm hover:border-[#C5A059] transition-colors">
+              {/* Persona Switcher for Sample Archive Exploration - Shown on XL+ */}
+              <div className="hidden xl:flex items-center gap-2 bg-[#0D1219] border border-[#C5A059]/40 px-3 py-1.5 text-xs shadow-sm hover:border-[#C5A059] transition-colors">
                 <Compass className="w-3.5 h-3.5 text-[#C5A059]" />
                 <select
                   value={activePersona === 'real' ? 'alice' : activePersona}
@@ -259,7 +259,7 @@ export const Header: React.FC<HeaderProps> = ({ activeView, setActiveView }) => 
               <button
                 id="header-sign-in-btn"
                 onClick={() => openAuthModal('signin')}
-                className="hidden sm:inline-flex items-center gap-1.5 bg-[#0D1219] hover:bg-[#141B26] text-[#EDE7DF] border border-[#C5A059]/50 hover:border-[#C5A059] font-deco font-semibold tracking-wider px-3 py-1.5 text-xs transition-all"
+                className="hidden sm:inline-flex items-center gap-1.5 bg-[#0D1219] hover:bg-[#141B26] text-[#EDE7DF] border border-[#C5A059]/50 hover:border-[#C5A059] font-deco font-semibold tracking-wider px-3 py-1.5 text-xs transition-all cursor-pointer"
               >
                 <LogIn className="w-3.5 h-3.5 text-[#C5A059]" />
                 <span>SIGN IN</span>
@@ -269,7 +269,7 @@ export const Header: React.FC<HeaderProps> = ({ activeView, setActiveView }) => 
               <button
                 id="header-register-btn"
                 onClick={() => openAuthModal('register')}
-                className="flex items-center gap-2 bg-gradient-to-r from-[#C5A059] via-[#E2BA6E] to-[#9E782F] hover:from-[#F5DE98] hover:to-[#C5A059] text-[#07090D] font-deco font-bold tracking-wider px-3.5 py-1.5 text-xs transition-all shadow-[0_0_15px_rgba(197,160,89,0.3)] active:scale-95"
+                className="flex items-center gap-1.5 sm:gap-2 bg-gradient-to-r from-[#C5A059] via-[#E2BA6E] to-[#9E782F] hover:from-[#F5DE98] hover:to-[#C5A059] text-[#07090D] font-deco font-bold tracking-wider px-3 sm:px-3.5 py-1.5 text-xs transition-all shadow-[0_0_15px_rgba(197,160,89,0.3)] active:scale-95 cursor-pointer shrink-0"
               >
                 <UserPlus className="w-3.5 h-3.5 text-[#07090D]" />
                 <span>REGISTER</span>
@@ -277,19 +277,20 @@ export const Header: React.FC<HeaderProps> = ({ activeView, setActiveView }) => 
             </div>
           )}
 
-          {/* Mobile Menu Toggle */}
+          {/* Mobile Menu Toggle - Shown below XL breakpoint */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2 text-[#A89F91] hover:text-[#F5DE98] hover:bg-[#131A24] border border-[#222B38]"
+            className="xl:hidden p-2 text-[#A89F91] hover:text-[#F5DE98] hover:bg-[#131A24] border border-[#222B38] cursor-pointer"
+            aria-label="Toggle navigation menu"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Navigation Drawer */}
+      {/* Mobile / Tablet Navigation Drawer */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-[#C5A059]/30 bg-[#07090D] p-5 space-y-3">
+        <div className="xl:hidden border-t border-[#C5A059]/30 bg-[#07090D] p-5 space-y-4 max-w-full overflow-hidden">
           {/* Mobile Auth Status Banner */}
           <div className="p-3 bg-[#0E1520] border border-[#C5A059]/30 flex items-center justify-between">
             {isRealUser && user ? (
@@ -300,7 +301,7 @@ export const Header: React.FC<HeaderProps> = ({ activeView, setActiveView }) => 
                 </div>
                 <button
                   onClick={signOutUser}
-                  className="px-2.5 py-1 text-xs bg-[#2B1113] text-[#FFA8A8] border border-[#E05252]/40"
+                  className="px-2.5 py-1 text-xs bg-[#2B1113] text-[#FFA8A8] border border-[#E05252]/40 cursor-pointer"
                 >
                   Sign Out
                 </button>
@@ -312,7 +313,7 @@ export const Header: React.FC<HeaderProps> = ({ activeView, setActiveView }) => 
                     openAuthModal('signin');
                     setMobileMenuOpen(false);
                   }}
-                  className="flex-1 py-2 text-center text-xs font-deco font-semibold bg-[#141B26] text-[#EDE7DF] border border-[#C5A059]/40"
+                  className="flex-1 py-2 text-center text-xs font-deco font-semibold bg-[#141B26] text-[#EDE7DF] border border-[#C5A059]/40 cursor-pointer"
                 >
                   Sign In
                 </button>
@@ -321,7 +322,7 @@ export const Header: React.FC<HeaderProps> = ({ activeView, setActiveView }) => 
                     openAuthModal('register');
                     setMobileMenuOpen(false);
                   }}
-                  className="flex-1 py-2 text-center text-xs font-deco font-bold bg-[#C5A059] text-[#07090D]"
+                  className="flex-1 py-2 text-center text-xs font-deco font-bold bg-[#C5A059] text-[#07090D] cursor-pointer"
                 >
                   Register
                 </button>
@@ -329,30 +330,66 @@ export const Header: React.FC<HeaderProps> = ({ activeView, setActiveView }) => 
             )}
           </div>
 
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeView === item.view;
-            return (
-              <button
-                key={item.view}
-                onClick={() => {
-                  setActiveView(item.view);
-                  setMobileMenuOpen(false);
-                }}
-                className={`w-full text-left px-4 py-2.5 transition-colors flex items-center justify-between ${
-                  isActive
-                    ? 'bg-[#131A24] text-[#F5DE98] border-l-2 border-[#C5A059]'
-                    : 'text-[#A89F91] hover:text-[#E8DFD0] hover:bg-[#0D1219]'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon className="w-4 h-4 text-[#C5A059]" />
-                  <span className="font-deco text-xs uppercase tracking-wider font-semibold">{item.label}</span>
+          {/* Demo Persona Switcher in Drawer */}
+          {!isRealUser && (
+            <div className="p-3 bg-[#0E1520] border border-[#C5A059]/30 flex flex-col gap-2">
+              <div className="flex items-center justify-between text-xs text-[#A89F91]">
+                <div className="flex items-center gap-1.5">
+                  <Compass className="w-3.5 h-3.5 text-[#C5A059]" />
+                  <span className="font-deco uppercase tracking-wider text-[11px]">Demo Account:</span>
                 </div>
-                <span className="text-[10px] font-mono text-[#6E675C]">{item.sub}</span>
-              </button>
-            );
-          })}
+                <span className="text-[10px] font-mono text-[#F5DE98] uppercase">{activePersona}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {demoPersonas.map((p) => {
+                  const isCur = activePersona === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        switchDemoPersona(p.id);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`px-2 py-1.5 text-[11px] font-deco truncate border text-center transition-colors cursor-pointer ${
+                        isCur
+                          ? 'border-[#C5A059] bg-[#1A1F26] text-[#F5DE98] font-bold'
+                          : 'border-[#222B38] bg-[#0A0E15] text-[#A89F91] hover:text-[#EDE7DF]'
+                      }`}
+                    >
+                      {p.displayName.split(' ')[0]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeView === item.view;
+              return (
+                <button
+                  key={item.view}
+                  onClick={() => {
+                    setActiveView(item.view);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full text-left px-4 py-2.5 transition-colors flex items-center justify-between cursor-pointer ${
+                    isActive
+                      ? 'bg-[#131A24] text-[#F5DE98] border-l-2 border-[#C5A059]'
+                      : 'text-[#A89F91] hover:text-[#E8DFD0] hover:bg-[#0D1219]'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon className="w-4 h-4 text-[#C5A059]" />
+                    <span className="font-deco text-xs uppercase tracking-wider font-semibold">{item.label}</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-[#6E675C]">{item.sub}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </header>

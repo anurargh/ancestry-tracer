@@ -146,16 +146,21 @@ export async function getAuditLogs(filter: GetAuditLogsFilter = {}) {
       stats[s.entityType] = s.count;
     }
 
-    const logs: AuditLogRecord[] = rows.map((r) => ({
-      logId: r.logId,
-      entityType: r.entityType,
-      entityId: r.entityId,
-      action: r.action,
-      oldValue: r.oldValue ? parseJsonSafely(r.oldValue) : null,
-      newValue: r.newValue ? parseJsonSafely(r.newValue) : null,
-      changedBy: r.changedBy,
-      changedAt: r.changedAt ? r.changedAt.toISOString() : new Date().toISOString(),
-    }));
+    const logs: AuditLogRecord[] = rows.map((r) => {
+      const changedAtIso = r.changedAt ? r.changedAt.toISOString() : new Date().toISOString();
+      return {
+        logId: r.logId,
+        entityType: r.entityType,
+        entityId: r.entityId,
+        action: r.action,
+        oldValue: r.oldValue ? parseJsonSafely(r.oldValue) : null,
+        newValue: r.newValue ? parseJsonSafely(r.newValue) : null,
+        changedBy: r.changedBy,
+        changedAt: changedAtIso,
+        actorId: r.changedBy,
+        timestamp: changedAtIso,
+      };
+    });
 
     return {
       logs,

@@ -301,7 +301,7 @@ export const TreesPage: React.FC<TreesPageProps> = ({
   const activeTreePeople = treePeople.filter((p) => p.treeId === activeTreeId);
 
   return (
-    <div id="trees_repository_page" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 font-sans">
+    <div id="trees_repository_page" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 font-sans w-full max-w-full overflow-hidden">
       {/* Art Deco Marquee Header */}
       <div className="relative border-b-2 border-[#D4AF37]/30 pb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
@@ -517,8 +517,8 @@ export const TreesPage: React.FC<TreesPageProps> = ({
                     No individuals added to this family tree yet.
                   </div>
                 ) : (
-                  <div className="border border-[#D4AF37]/20 bg-[#101317] p-4 rounded-sm overflow-x-auto">
-                    <div className="min-w-[500px] space-y-2.5">
+                  <div className="border border-[#D4AF37]/20 bg-[#101317] p-4 rounded-sm">
+                    <div className="w-full space-y-2.5">
                       {activeTreePeople.map((person, idx) => (
                         <div
                           key={person.personId}

@@ -59,7 +59,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveView }) => {
   }, [user]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16 w-full max-w-full overflow-hidden">
       {/* Hero Marquee */}
       <div className="relative border border-[#C5A059]/40 bg-gradient-to-b from-[#0F151E] to-[#07090D] p-8 sm:p-14 overflow-hidden shadow-2xl deco-corner-accent">
         {/* Geometric Sunburst Rays Watermark */}
@@ -100,16 +100,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveView }) => {
             <button
               id="hero-review-duplicates-btn"
               onClick={() => setActiveView('duplicate_review')}
-              className="inline-flex items-center gap-2.5 bg-[#0D1219] hover:bg-[#131A24] text-[#F5DE98] border border-[#C5A059]/40 hover:border-[#C5A059] font-deco font-semibold tracking-wider px-5 py-3 text-xs transition-all shadow-sm"
+              className="inline-flex items-center gap-2.5 bg-[#0D1219] hover:bg-[#131A24] text-[#F5DE98] border border-[#C5A059]/40 hover:border-[#C5A059] font-deco font-semibold tracking-wider px-5 py-3 text-xs transition-all shadow-sm cursor-pointer"
             >
               <GitMerge className="w-4 h-4 text-[#C5A059]" />
               <span>CHECK DUPLICATES</span>
             </button>
 
             <button
+              id="hero-activity-log-btn"
+              onClick={() => setActiveView('audit_log')}
+              className="inline-flex items-center gap-2.5 bg-[#0D1219] hover:bg-[#131A24] text-[#EDE7DF] hover:text-[#F5DE98] border border-[#C5A059]/40 hover:border-[#C5A059] font-deco font-semibold tracking-wider px-5 py-3 text-xs transition-all shadow-sm cursor-pointer"
+            >
+              <History className="w-4 h-4 text-[#C5A059]" />
+              <span>ACTIVITY LOG</span>
+            </button>
+
+            <button
               id="hero-view-architecture-btn"
               onClick={() => setActiveView('about')}
-              className="inline-flex items-center gap-2 text-[#A89F91] hover:text-[#F5DE98] px-4 py-3 text-xs font-deco tracking-widest uppercase transition-colors"
+              className="inline-flex items-center gap-2 text-[#A89F91] hover:text-[#F5DE98] px-4 py-3 text-xs font-deco tracking-widest uppercase transition-colors cursor-pointer"
             >
               <BookOpen className="w-4 h-4 text-[#C5A059]" />
               <span>HOW IT WORKS</span>
@@ -167,44 +176,56 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveView }) => {
 
         {/* Metric Counts */}
         <div className="mt-12 pt-8 border-t border-[#C5A059]/25 grid grid-cols-2 sm:grid-cols-4 gap-6 text-left">
-          <div className="space-y-1.5 border-l-2 border-[#C5A059]/40 pl-4">
-            <div className="text-[9px] uppercase font-mono tracking-[0.25em] text-[#A89F91]">
+          <div
+            onClick={() => setActiveView('people')}
+            className="space-y-1.5 border-l-2 border-[#C5A059]/40 pl-4 cursor-pointer hover:border-[#C5A059] transition-all group"
+          >
+            <div className="text-[9px] uppercase font-mono tracking-[0.25em] text-[#A89F91] group-hover:text-[#F5DE98]">
               PEOPLE
             </div>
             <div className="text-2xl sm:text-3xl font-deco font-bold text-[#F5DE98]">
               {loadingStats ? '—' : stats.peopleCount > 0 ? stats.peopleCount : 40}
             </div>
-            <div className="text-[10px] text-[#6E675C] font-mono">TOTAL INDIVIDUALS</div>
+            <div className="text-[10px] text-[#6E675C] font-mono">TOTAL INDIVIDUALS &rarr;</div>
           </div>
 
-          <div className="space-y-1.5 border-l-2 border-[#52B395]/50 pl-4">
+          <div
+            onClick={() => setActiveView('audit_log')}
+            className="space-y-1.5 border-l-2 border-[#52B395]/50 pl-4 cursor-pointer hover:border-[#52B395] transition-all group"
+          >
             <div className="text-[9px] uppercase font-mono tracking-[0.25em] text-[#52B395]">
               SOURCES & EVIDENCE
             </div>
-            <div className="text-2xl sm:text-3xl font-deco font-bold text-[#E8DFD0]">
+            <div className="text-2xl sm:text-3xl font-deco font-bold text-[#E8DFD0] group-hover:text-[#F5DE98]">
               {loadingStats ? '—' : stats.claimsCount > 0 ? stats.claimsCount : 184}
             </div>
-            <div className="text-[10px] text-[#6E675C] font-mono">DOCUMENTED FACTS</div>
+            <div className="text-[10px] text-[#6E675C] font-mono">DOCUMENTED FACTS &rarr;</div>
           </div>
 
-          <div className="space-y-1.5 border-l-2 border-[#64A0E8]/50 pl-4">
+          <div
+            onClick={() => setActiveView('trees')}
+            className="space-y-1.5 border-l-2 border-[#64A0E8]/50 pl-4 cursor-pointer hover:border-[#64A0E8] transition-all group"
+          >
             <div className="text-[9px] uppercase font-mono tracking-[0.25em] text-[#64A0E8]">
               RELATIONSHIPS
             </div>
-            <div className="text-2xl sm:text-3xl font-deco font-bold text-[#E8DFD0]">
+            <div className="text-2xl sm:text-3xl font-deco font-bold text-[#E8DFD0] group-hover:text-[#F5DE98]">
               {loadingStats ? '—' : stats.relationshipsCount > 0 ? stats.relationshipsCount : 72}
             </div>
-            <div className="text-[10px] text-[#6E675C] font-mono">FAMILY CONNECTIONS</div>
+            <div className="text-[10px] text-[#6E675C] font-mono">FAMILY CONNECTIONS &rarr;</div>
           </div>
 
-          <div className="space-y-1.5 border-l-2 border-[#D9658B]/50 pl-4">
+          <div
+            onClick={() => setActiveView('duplicate_review')}
+            className="space-y-1.5 border-l-2 border-[#D9658B]/50 pl-4 cursor-pointer hover:border-[#D9658B] transition-all group"
+          >
             <div className="text-[9px] uppercase font-mono tracking-[0.25em] text-[#D9658B]">
               POTENTIAL MATCHES
             </div>
             <div className="text-2xl sm:text-3xl font-deco font-bold text-[#F5DE98]">
               {loadingStats ? '—' : stats.pendingDuplicates > 0 ? stats.pendingDuplicates : '0'}
             </div>
-            <div className="text-[10px] text-[#6E675C] font-mono">TO REVIEW</div>
+            <div className="text-[10px] text-[#6E675C] font-mono">TO REVIEW &rarr;</div>
           </div>
         </div>
       </div>
@@ -219,91 +240,128 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveView }) => {
           <span className="text-[10px] font-mono tracking-[0.25em] text-[#A89F91] uppercase">EXPLORE THE PLATFORM</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-7">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Card I: People */}
           <div
             onClick={() => setActiveView('people')}
-            className="group cursor-pointer bg-gradient-to-b from-[#0D161F] to-[#080D14] border border-[#26354A] hover:border-[#C5A059] p-7 space-y-5 transition-all duration-300 shadow-lg relative deco-corner-accent hover:-translate-y-1"
+            className="group cursor-pointer bg-gradient-to-b from-[#0D161F] to-[#080D14] border border-[#26354A] hover:border-[#C5A059] p-6 space-y-4 transition-all duration-300 shadow-lg relative deco-corner-accent hover:-translate-y-1 flex flex-col justify-between"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-[9px] font-mono text-[#F5DE98] uppercase tracking-[0.2em] border border-[#C5A059]/40 bg-[#07090D] px-2.5 py-1">
-                PEOPLE
-              </span>
-              <div className="w-9 h-9 border border-[#64A0E8]/30 bg-[#0A192F] flex items-center justify-center text-[#64A0E8] group-hover:border-[#C5A059] transition-colors">
-                <Users className="w-4 h-4" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-mono text-[#F5DE98] uppercase tracking-[0.2em] border border-[#C5A059]/40 bg-[#07090D] px-2.5 py-1">
+                  PEOPLE
+                </span>
+                <div className="w-8 h-8 border border-[#64A0E8]/30 bg-[#0A192F] flex items-center justify-center text-[#64A0E8] group-hover:border-[#C5A059] transition-colors">
+                  <Users className="w-4 h-4" />
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <h3 className="text-lg font-deco font-bold text-[#F5DE98] group-hover:text-[#FFF0C2] transition-colors">
-                People & Records
-              </h3>
-              <p className="text-sm text-[#A89F91] leading-relaxed font-reading">
-                Search and explore people, view biographical facts, check supporting sources, and add notes with confidence ratings.
-              </p>
+              <div className="space-y-1.5">
+                <h3 className="text-base font-deco font-bold text-[#F5DE98] group-hover:text-[#FFF0C2] transition-colors">
+                  People & Records
+                </h3>
+                <p className="text-xs text-[#A89F91] leading-relaxed font-reading">
+                  Search and explore people, view biographical facts, check supporting sources, and add notes.
+                </p>
+              </div>
             </div>
 
             <div className="pt-3 border-t border-[#222B38] flex items-center justify-between text-xs font-deco font-semibold text-[#C5A059] tracking-wider uppercase">
               <span>VIEW PEOPLE</span>
-              <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1.5 transition-transform" />
+              <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1.5 transition-transform" />
             </div>
           </div>
 
           {/* Card II: Lineage Trees */}
           <div
             onClick={() => setActiveView('trees')}
-            className="group cursor-pointer bg-gradient-to-b from-[#0C1E18] to-[#07130F] border border-[#1B4336] hover:border-[#C5A059] p-7 space-y-5 transition-all duration-300 shadow-lg relative deco-corner-accent hover:-translate-y-1"
+            className="group cursor-pointer bg-gradient-to-b from-[#0C1E18] to-[#07130F] border border-[#1B4336] hover:border-[#C5A059] p-6 space-y-4 transition-all duration-300 shadow-lg relative deco-corner-accent hover:-translate-y-1 flex flex-col justify-between"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-[9px] font-mono text-[#52B395] uppercase tracking-[0.2em] border border-[#52B395]/40 bg-[#07090D] px-2.5 py-1">
-                FAMILY TREES
-              </span>
-              <div className="w-9 h-9 border border-[#52B395]/30 bg-[#0B221B] flex items-center justify-center text-[#52B395] group-hover:border-[#C5A059] transition-colors">
-                <FolderTree className="w-4 h-4" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-mono text-[#52B395] uppercase tracking-[0.2em] border border-[#52B395]/40 bg-[#07090D] px-2.5 py-1">
+                  TREES
+                </span>
+                <div className="w-8 h-8 border border-[#52B395]/30 bg-[#0B221B] flex items-center justify-center text-[#52B395] group-hover:border-[#C5A059] transition-colors">
+                  <FolderTree className="w-4 h-4" />
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <h3 className="text-lg font-deco font-bold text-[#F5DE98] group-hover:text-[#FFF0C2] transition-colors">
-                Family Trees & Collaboration
-              </h3>
-              <p className="text-sm text-[#A89F91] leading-relaxed font-reading">
-                Manage your trees, invite family members with view or edit permissions, and visualize connections across generations.
-              </p>
+              <div className="space-y-1.5">
+                <h3 className="text-base font-deco font-bold text-[#F5DE98] group-hover:text-[#FFF0C2] transition-colors">
+                  Family Trees
+                </h3>
+                <p className="text-xs text-[#A89F91] leading-relaxed font-reading">
+                  Manage multiple trees, invite family collaborators, and control privacy for relative discovery.
+                </p>
+              </div>
             </div>
 
             <div className="pt-3 border-t border-[#222B38] flex items-center justify-between text-xs font-deco font-semibold text-[#52B395] tracking-wider uppercase">
               <span>VIEW TREES</span>
-              <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1.5 transition-transform" />
+              <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1.5 transition-transform" />
             </div>
           </div>
 
           {/* Card III: Duplicate Resolution */}
           <div
             onClick={() => setActiveView('duplicate_review')}
-            className="group cursor-pointer bg-gradient-to-b from-[#1C0D15] to-[#12070D] border border-[#481E2E] hover:border-[#C5A059] p-7 space-y-5 transition-all duration-300 shadow-lg relative deco-corner-accent hover:-translate-y-1"
+            className="group cursor-pointer bg-gradient-to-b from-[#1C0D15] to-[#12070D] border border-[#481E2E] hover:border-[#C5A059] p-6 space-y-4 transition-all duration-300 shadow-lg relative deco-corner-accent hover:-translate-y-1 flex flex-col justify-between"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-[9px] font-mono text-[#D9658B] uppercase tracking-[0.2em] border border-[#D9658B]/40 bg-[#07090D] px-2.5 py-1">
-                DUPLICATES
-              </span>
-              <div className="w-9 h-9 border border-[#D9658B]/30 bg-[#240B13] flex items-center justify-center text-[#D9658B] group-hover:border-[#C5A059] transition-colors">
-                <GitMerge className="w-4 h-4" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-mono text-[#D9658B] uppercase tracking-[0.2em] border border-[#D9658B]/40 bg-[#07090D] px-2.5 py-1">
+                  DUPLICATES
+                </span>
+                <div className="w-8 h-8 border border-[#D9658B]/30 bg-[#240B13] flex items-center justify-center text-[#D9658B] group-hover:border-[#C5A059] transition-colors">
+                  <GitMerge className="w-4 h-4" />
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <h3 className="text-lg font-deco font-bold text-[#F5DE98] group-hover:text-[#FFF0C2] transition-colors">
-                Duplicate Record Review
-              </h3>
-              <p className="text-sm text-[#A89F91] leading-relaxed font-reading">
-                Compare potential duplicate records side by side with similarity scores, and cleanly merge or separate them.
-              </p>
+              <div className="space-y-1.5">
+                <h3 className="text-base font-deco font-bold text-[#F5DE98] group-hover:text-[#FFF0C2] transition-colors">
+                  Review Duplicates
+                </h3>
+                <p className="text-xs text-[#A89F91] leading-relaxed font-reading">
+                  Compare potential duplicate records side by side with similarity scores and merge them cleanly.
+                </p>
+              </div>
             </div>
 
             <div className="pt-3 border-t border-[#222B38] flex items-center justify-between text-xs font-deco font-semibold text-[#D9658B] tracking-wider uppercase">
               <span>REVIEW DUPLICATES</span>
-              <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1.5 transition-transform" />
+              <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1.5 transition-transform" />
+            </div>
+          </div>
+
+          {/* Card IV: Activity Log */}
+          <div
+            onClick={() => setActiveView('audit_log')}
+            className="group cursor-pointer bg-gradient-to-b from-[#1B1912] to-[#100F0A] border border-[#4A3E26] hover:border-[#C5A059] p-6 space-y-4 transition-all duration-300 shadow-lg relative deco-corner-accent hover:-translate-y-1 flex flex-col justify-between"
+          >
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-mono text-[#C5A059] uppercase tracking-[0.2em] border border-[#C5A059]/40 bg-[#07090D] px-2.5 py-1">
+                  HISTORY
+                </span>
+                <div className="w-8 h-8 border border-[#C5A059]/30 bg-[#1F190B] flex items-center justify-center text-[#C5A059] group-hover:border-[#F5DE98] transition-colors">
+                  <History className="w-4 h-4" />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <h3 className="text-base font-deco font-bold text-[#F5DE98] group-hover:text-[#FFF0C2] transition-colors">
+                  Activity Log
+                </h3>
+                <p className="text-xs text-[#A89F91] leading-relaxed font-reading">
+                  Track every addition, relationship, document upload, and duplicate merge with full timestamped history.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-[#222B38] flex items-center justify-between text-xs font-deco font-semibold text-[#C5A059] tracking-wider uppercase">
+              <span>VIEW ACTIVITY</span>
+              <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1.5 transition-transform" />
             </div>
           </div>
         </div>

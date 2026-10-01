@@ -250,7 +250,7 @@ export const DuplicateReviewPage: React.FC<DuplicateReviewPageProps> = ({ onSele
   const dismissedCount = candidates.filter((c) => c.status === 'dismissed').length;
 
   return (
-    <div id="duplicate_review_page" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 font-sans">
+    <div id="duplicate_review_page" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 font-sans w-full max-w-full overflow-hidden">
       {/* Art Deco Marquee Header */}
       <div className="relative border-b-2 border-[#D4AF37]/30 pb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
@@ -305,7 +305,7 @@ export const DuplicateReviewPage: React.FC<DuplicateReviewPageProps> = ({ onSele
       {/* Filter and Queue Ledger Bar */}
       <div className="deco-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#15191E] border border-[#D4AF37]/30">
         {/* Status Navigation Tabs */}
-        <div className="flex items-center gap-1.5 bg-[#101317] p-1 rounded-sm border border-[#2B333C]">
+        <div className="flex items-center gap-1.5 bg-[#101317] p-1 rounded-sm border border-[#2B333C] overflow-x-auto max-w-full">
           {[
             { id: 'pending', label: `Pending Queue (${pendingCount})` },
             { id: 'approved', label: `Reconciled (${approvedCount})` },

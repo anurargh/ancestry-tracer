@@ -24,7 +24,7 @@ import { motion } from 'motion/react';
 
 export const AboutArchitecturePage: React.FC = () => {
   return (
-    <div id="about_architecture_page" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16 font-sans">
+    <div id="about_architecture_page" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16 font-sans w-full max-w-full overflow-hidden">
       {/* Monograph Header */}
       <div className="text-center space-y-5 max-w-3xl mx-auto">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-sm border border-[#D4AF37]/50 bg-[#1A1813] text-[#D4AF37] text-[11px] font-mono uppercase tracking-[0.25em]">

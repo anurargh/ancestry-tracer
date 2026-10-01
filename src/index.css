@@ -39,16 +39,34 @@
     --color-parchment-dim: #6E675C;
   }
 
+  html {
+    overflow-x: hidden;
+    max-width: 100vw;
+    width: 100%;
+  }
+
   body {
     background-color: #07090D;
     color: #E8DFD0;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    max-width: 100vw;
+    width: 100%;
+    margin: 0;
+    padding: 0;
     background-image: 
       radial-gradient(ellipse at 50% -10%, rgba(197, 160, 89, 0.08) 0%, transparent 60%),
       radial-gradient(circle at 10% 30%, rgba(11, 34, 27, 0.25) 0%, transparent 45%),
       radial-gradient(circle at 90% 70%, rgba(10, 25, 47, 0.25) 0%, transparent 45%);
     background-attachment: fixed;
+  }
+
+  #root {
+    overflow-x: hidden;
+    max-width: 100vw;
+    width: 100%;
+    min-height: 100vh;
   }
 
   h1, h2, h3, .font-deco {

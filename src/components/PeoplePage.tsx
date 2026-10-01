@@ -197,7 +197,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 w-full max-w-full overflow-hidden">
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 border-b border-[#C5A059]/30 pb-7">
         <div className="space-y-1.5">

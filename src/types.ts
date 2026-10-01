@@ -208,6 +208,8 @@ export interface AuditLogRecord {
   newValue: any | null;
   changedBy: string;
   changedAt: string;
+  actorId?: string;
+  timestamp?: string;
 }
 
 export interface ParentChildRecord {
