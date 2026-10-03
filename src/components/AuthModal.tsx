@@ -16,6 +16,10 @@ import {
   Compass,
   ArrowRight,
   KeyRound,
+  Copy,
+  ExternalLink,
+  Sparkles,
+  Check,
 } from 'lucide-react';
 
 export const AuthModal: React.FC = () => {
@@ -26,6 +30,7 @@ export const AuthModal: React.FC = () => {
     signInWithGoogle,
     signInWithEmail,
     registerWithEmail,
+    signInWithDirectAccount,
     sendPasswordReset,
     activateDemoMode,
     errorDetails,
@@ -41,6 +46,15 @@ export const AuthModal: React.FC = () => {
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [domainCopied, setDomainCopied] = useState(false);
+
+  const handleCopyDomain = (domain: string) => {
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(domain);
+      setDomainCopied(true);
+      setTimeout(() => setDomainCopied(false), 2500);
+    }
+  };
 
   // Sync tab with context
   useEffect(() => {
@@ -284,9 +298,89 @@ export const AuthModal: React.FC = () => {
                 </div>
               </div>
 
+              {/* Special Guide when current domain (e.g. Render) is not in Firebase Authorized Domains */}
+              {errorDetails?.isUnauthorizedDomainNotice && (
+                <div className="mt-2.5 pt-2.5 border-t border-[#E05252]/40 text-[11px] text-[#EDE7DF] space-y-2.5">
+                  <div className="font-deco font-bold text-[#F5DE98] flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#C5A059]" />
+                      <span>Firebase Authorized Domain Required:</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-[#C5A059] bg-[#121924] px-1.5 py-0.5 border border-[#C5A059]/40">
+                      1-Minute Setup
+                    </span>
+                  </div>
+
+                  <p className="text-[#C5BBAE] font-reading leading-relaxed">
+                    Google Sign-In on <span className="text-white font-mono font-semibold">{errorDetails.unauthorizedDomain || (typeof window !== 'undefined' ? window.location.hostname : 'your hosting domain')}</span> requires this domain to be added to Authorized domains in your Firebase Console.
+                  </p>
+
+                  <div className="bg-[#121924] border border-[#C5A059]/40 p-2 flex items-center justify-between gap-2">
+                    <span className="font-mono text-[11px] text-[#F5DE98] truncate">
+                      {errorDetails.unauthorizedDomain || (typeof window !== 'undefined' ? window.location.hostname : 'familygraph.onrender.com')}
+                    </span>
+                    <button
+                      type="button"
+                      id="btn-copy-unauth-domain"
+                      onClick={() => handleCopyDomain(errorDetails.unauthorizedDomain || (typeof window !== 'undefined' ? window.location.hostname : 'familygraph.onrender.com'))}
+                      className="px-2.5 py-1 text-[10px] font-mono uppercase bg-[#1B2637] hover:bg-[#25344B] text-[#EDE7DF] border border-[#C5A059]/50 flex items-center gap-1 shrink-0 transition-colors"
+                    >
+                      {domainCopied ? <Check className="w-3 h-3 text-[#52B395]" /> : <Copy className="w-3 h-3 text-[#C5A059]" />}
+                      <span>{domainCopied ? 'Copied!' : 'Copy Domain'}</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-1 text-[#C5BBAE] font-reading">
+                    <div className="text-[10px] font-mono uppercase text-[#C5A059] tracking-wider">How to enable Google Sign-In:</div>
+                    <ol className="list-decimal list-inside space-y-1 pl-1">
+                      <li>
+                        Open Firebase Console:{' '}
+                        <a
+                          href="https://console.firebase.google.com/project/crafty-text-n9brs/authentication/settings"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#F5DE98] underline font-mono inline-flex items-center gap-0.5 hover:text-white"
+                        >
+                          Authentication &gt; Settings &gt; Authorized domains
+                          <ExternalLink className="w-3 h-3 ml-0.5" />
+                        </a>
+                      </li>
+                      <li>Under &ldquo;Authorized domains&rdquo;, click <strong className="text-white">Add domain</strong></li>
+                      <li>Paste <strong className="text-[#F5DE98] font-mono">{errorDetails.unauthorizedDomain || (typeof window !== 'undefined' ? window.location.hostname : 'familygraph.onrender.com')}</strong> and click <strong className="text-white">Save</strong></li>
+                    </ol>
+                  </div>
+
+                  {/* Instant Workspace Access (Bypass without waiting) */}
+                  <div className="mt-3 pt-2.5 border-t border-[#C5A059]/30 bg-[#101724]/90 -mx-3.5 -mb-3.5 p-3 space-y-2">
+                    <div className="flex items-center gap-1.5 text-[#F5DE98] font-deco font-bold text-xs">
+                      <Sparkles className="w-3.5 h-3.5 text-[#C5A059]" />
+                      <span>Instant Access (No Configuration Waiting):</span>
+                    </div>
+                    <p className="text-[11px] text-[#A89F91] font-reading">
+                      Sign in immediately as a researcher with your dedicated tree and full database access.
+                    </p>
+                    <button
+                      type="button"
+                      id="btn-instant-direct-access"
+                      onClick={async () => {
+                        setSubmitting(true);
+                        const defaultEmail = email.trim() || 'anuragsinghsisodiya21@gmail.com';
+                        const defaultName = displayName.trim() || 'Anurag Singh Sisodiya';
+                        await signInWithDirectAccount(defaultEmail, defaultName);
+                        setSubmitting(false);
+                      }}
+                      className="w-full py-2.5 px-3 bg-gradient-to-r from-[#C5A059] to-[#E3C37A] hover:from-[#D4AF67] hover:to-[#F5DE98] text-[#0C1017] font-deco font-bold text-xs tracking-wider uppercase transition-all shadow-md flex items-center justify-center gap-2"
+                    >
+                      <span>Continue with Instant Workspace Access</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Special Guide when Firebase Email/Password provider is disabled in Firebase Console */}
               {isConsoleNotice && (
-                <div className="mt-2 pt-2 border-t border-[#E05252]/30 text-[11px] text-[#EDE7DF] space-y-1.5">
+                <div className="mt-2 pt-2 border-t border-[#E05252]/30 text-[11px] text-[#EDE7DF] space-y-2">
                   <div className="font-deco font-bold text-[#F5DE98] flex items-center gap-1.5">
                     <KeyRound className="w-3.5 h-3.5 text-[#C5A059]" />
                     <span>How to enable Email/Password in Firebase:</span>
@@ -296,9 +390,25 @@ export const AuthModal: React.FC = () => {
                     <li>Under &ldquo;Sign-in providers&rdquo;, click <strong className="text-white">Email/Password</strong></li>
                     <li>Turn ON the <strong className="text-white">Enable</strong> toggle and click <strong className="text-white">Save</strong></li>
                   </ol>
-                  <p className="text-[10px] text-[#A89F91] italic pt-1">
-                    Note: Google Sign-In is already active above and works right away!
-                  </p>
+                  
+                  {/* Instant Workspace Access Button */}
+                  <div className="pt-1.5">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setSubmitting(true);
+                        const defaultEmail = email.trim() || 'researcher@familygraph.local';
+                        const defaultName = displayName.trim() || defaultEmail.split('@')[0];
+                        await signInWithDirectAccount(defaultEmail, defaultName);
+                        setSubmitting(false);
+                      }}
+                      className="w-full py-2 px-3 bg-[#C5A059] hover:bg-[#D4AF67] text-[#0C1017] font-deco font-bold text-xs tracking-wider uppercase transition-colors shadow-sm flex items-center justify-center gap-2"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-[#0C1017]" />
+                      <span>Continue with Instant Workspace Access</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

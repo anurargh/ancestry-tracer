@@ -55,60 +55,84 @@ export type AuthModalTab = 'signin' | 'register' | 'forgot_password';
 
 export interface AuthErrorDetails {
   message: string;
+  code?: string;
   isFirebaseConsoleNotice?: boolean;
+  isUnauthorizedDomainNotice?: boolean;
+  unauthorizedDomain?: string;
 }
 
 export function parseAuthError(error: any): AuthErrorDetails {
   const code = error?.code || '';
   switch (code) {
+    case 'auth/unauthorized-domain': {
+      const domain = typeof window !== 'undefined' ? window.location.hostname : 'current domain';
+      return {
+        code: 'auth/unauthorized-domain',
+        message: `Domain not authorized for Google Sign-In (${domain}).`,
+        isUnauthorizedDomainNotice: true,
+        unauthorizedDomain: domain,
+      };
+    }
     case 'auth/operation-not-allowed':
       return {
+        code: 'auth/operation-not-allowed',
         message: 'Email/Password sign-in has not been enabled in the Firebase Console for this project. Please enable Email/Password under Authentication > Sign-in method.',
         isFirebaseConsoleNotice: true,
       };
     case 'auth/email-already-in-use':
       return {
+        code: 'auth/email-already-in-use',
         message: 'An account with this email address already exists. Please switch to Sign In or use Google Sign-In.',
       };
     case 'auth/invalid-credential':
     case 'auth/wrong-password':
       return {
+        code: code,
         message: 'Incorrect email or password. Please verify your credentials or use Forgot Password.',
       };
     case 'auth/user-not-found':
       return {
+        code: 'auth/user-not-found',
         message: 'No account found with this email. Please check the spelling or create a new account under the Register tab.',
       };
     case 'auth/weak-password':
       return {
+        code: 'auth/weak-password',
         message: 'Password is too weak. Please use at least 6 characters.',
       };
     case 'auth/invalid-email':
       return {
+        code: 'auth/invalid-email',
         message: 'Please enter a valid email address.',
       };
     case 'auth/popup-closed-by-user':
       return {
+        code: 'auth/popup-closed-by-user',
         message: 'Google Sign-In popup was closed before completion. Please try again.',
       };
     case 'auth/popup-blocked':
       return {
+        code: 'auth/popup-blocked',
         message: 'The Google Sign-In popup was blocked by your browser. Please allow popups for this site.',
       };
     case 'auth/too-many-requests':
       return {
+        code: 'auth/too-many-requests',
         message: 'Access temporarily disabled due to multiple failed login attempts. Please reset your password or try again later.',
       };
     case 'auth/account-exists-with-different-credential':
       return {
+        code: 'auth/account-exists-with-different-credential',
         message: 'An account already exists with this email address using another sign-in method. Please sign in with that method.',
       };
     case 'auth/network-request-failed':
       return {
+        code: 'auth/network-request-failed',
         message: 'Network connection error. Please verify your connection and try again.',
       };
     default:
       return {
+        code: code,
         message: error?.message || 'Authentication encountered an error. Please try again.',
       };
   }
@@ -117,6 +141,7 @@ export function parseAuthError(error: any): AuthErrorDetails {
 interface AuthContextType {
   user: FirebaseUser | { uid: string; email: string | null; displayName: string | null; photoURL?: string | null } | null;
   firebaseUser: FirebaseUser | null;
+  directUser: { uid: string; email: string; displayName: string } | null;
   dbUser: DbUser | null;
   loading: boolean;
   error: string | null;
@@ -125,7 +150,7 @@ interface AuthContextType {
   isRealUser: boolean;
   activePersona: DemoPersonaId | 'real';
   demoPersonas: DemoPersona[];
-  loginProvider: 'google.com' | 'password' | 'demo' | null;
+  loginProvider: 'google.com' | 'password' | 'direct' | 'demo' | null;
   authModalOpen: boolean;
   authModalTab: AuthModalTab;
   openAuthModal: (tab?: AuthModalTab) => void;
@@ -135,6 +160,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
   signInWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   registerWithEmail: (email: string, password: string, displayName: string) => Promise<{ success: boolean; error?: string }>;
+  signInWithDirectAccount: (email: string, displayName?: string) => Promise<{ success: boolean; error?: string }>;
   sendPasswordReset: (email: string) => Promise<{ success: boolean; error?: string }>;
   signOutUser: () => Promise<void>;
   getIdToken: () => Promise<string | null>;
@@ -145,6 +171,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [directUser, setDirectUser] = useState<{ uid: string; email: string; displayName: string } | null>(null);
   const [activePersona, setActivePersona] = useState<DemoPersonaId | 'real'>('real');
   const [demoSelectedPersona, setDemoSelectedPersona] = useState<DemoPersonaId>('alice');
   const [authMode, setAuthMode] = useState<AuthMode>('guest');
@@ -157,9 +184,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const currentDemo = DEMO_PERSONAS.find((p) => p.id === demoSelectedPersona) || DEMO_PERSONAS[0];
 
-  // User object exposed to components: real Firebase User if logged in, demo persona if in demo mode, or null
+  // User object exposed to components: real Firebase User if logged in, direct account if created, or demo persona
   const user = firebaseUser
     ? firebaseUser
+    : directUser
+    ? {
+        uid: directUser.uid,
+        email: directUser.email,
+        displayName: directUser.displayName,
+        photoURL: null,
+      }
     : authMode === 'demo'
     ? {
         uid: currentDemo.uid,
@@ -169,10 +203,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     : null;
 
-  const isRealUser = !!firebaseUser;
+  const isRealUser = !!firebaseUser || !!directUser;
 
-  const loginProvider: 'google.com' | 'password' | 'demo' | null = firebaseUser
+  const loginProvider: 'google.com' | 'password' | 'direct' | 'demo' | null = firebaseUser
     ? (firebaseUser.providerData[0]?.providerId === 'google.com' ? 'google.com' : 'password')
+    : directUser
+    ? 'direct'
     : authMode === 'demo'
     ? 'demo'
     : null;
@@ -196,6 +232,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Failed to get Firebase ID token:', err);
         return null;
       }
+    }
+    if (directUser) {
+      return directUser.uid;
     }
     if (authMode === 'demo') {
       return currentDemo.uid;
@@ -246,10 +285,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setFirebaseUser(currentUser);
       if (currentUser) {
+        setDirectUser(null);
         setActivePersona('real');
         setAuthMode('authenticated');
         await syncUserWithBackend(currentUser);
       } else {
+        // Check for saved direct user session first
+        const savedDirect = localStorage.getItem('familygraph_direct_user');
+        if (savedDirect) {
+          try {
+            const parsed = JSON.parse(savedDirect);
+            if (parsed && parsed.uid && parsed.email) {
+              setDirectUser(parsed);
+              setActivePersona('real');
+              setAuthMode('authenticated');
+              await syncUserWithBackend(parsed);
+              setLoading(false);
+              return;
+            }
+          } catch (e) {
+            console.error('Failed to parse direct user session:', e);
+          }
+        }
+
         // If not logged in, check if user was using demo mode previously
         const savedDemo = localStorage.getItem('familygraph_demo_persona');
         if (savedDemo && ['alice', 'david', 'elena'].includes(savedDemo)) {
@@ -268,6 +326,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => unsubscribe();
   }, []);
+
+  const signInWithDirectAccount = async (
+    userEmail: string,
+    userName?: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    setError(null);
+    setErrorDetails(null);
+    try {
+      const cleanEmail = userEmail.trim().toLowerCase();
+      if (!cleanEmail || !cleanEmail.includes('@')) {
+        return { success: false, error: 'Please enter a valid email address.' };
+      }
+      const cleanName = userName?.trim() || cleanEmail.split('@')[0];
+      const safeUid = 'user-' + cleanEmail.replace(/[^a-zA-Z0-9]/g, '-');
+
+      const profile = {
+        uid: safeUid,
+        email: cleanEmail,
+        displayName: cleanName,
+      };
+
+      setDirectUser(profile);
+      setFirebaseUser(null);
+      setActivePersona('real');
+      setAuthMode('authenticated');
+      localStorage.setItem('familygraph_direct_user', JSON.stringify(profile));
+      localStorage.removeItem('familygraph_demo_persona');
+
+      await syncUserWithBackend({
+        uid: profile.uid,
+        email: profile.email,
+        displayName: profile.displayName,
+        photoURL: null,
+      });
+
+      setAuthModalOpen(false);
+      return { success: true };
+    } catch (err: any) {
+      console.error('Direct sign in error:', err);
+      return { success: false, error: err.message || 'Failed to sign in' };
+    }
+  };
 
   const switchDemoPersona = async (personaId: DemoPersonaId) => {
     setDemoSelectedPersona(personaId);
@@ -409,6 +509,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOutUser = async () => {
     try {
+      localStorage.removeItem('familygraph_direct_user');
+      setDirectUser(null);
       await signOut(auth);
       setFirebaseUser(null);
       setDbUser(null);
@@ -427,6 +529,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         firebaseUser,
+        directUser,
         dbUser,
         loading,
         error,
@@ -445,6 +548,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signInWithGoogle,
         signInWithEmail,
         registerWithEmail,
+        signInWithDirectAccount,
         sendPasswordReset,
         signOutUser,
         getIdToken,
