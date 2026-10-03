@@ -70,6 +70,33 @@ export const TreesPage: React.FC<TreesPageProps> = ({
   const [pendingRemoveMemberUid, setPendingRemoveMemberUid] = useState<string | null>(null);
   const [removingMember, setRemovingMember] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [seeding, setSeeding] = useState(false);
+
+  const handleLoadPrestoredDatabase = async (cleanExisting = false) => {
+    try {
+      setSeeding(true);
+      setMessage(null);
+      const headers = await getAuthHeaders();
+      const res = await fetch('/api/demo/seed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+        body: JSON.stringify({ cleanExisting }),
+      });
+      if (!res.ok) {
+        throw new Error('Failed to load pre-stored dataset');
+      }
+      await fetchTreesAndConsent();
+      setMessage({ type: 'success', text: 'Pre-stored genealogical dataset (44 individuals across 3 family trees) loaded successfully!' });
+    } catch (err: any) {
+      console.error('Error loading pre-stored database:', err);
+      setMessage({ type: 'error', text: err.message || 'Failed to load pre-stored database' });
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   useEffect(() => {
     fetchTreesAndConsent();
@@ -319,7 +346,22 @@ export const TreesPage: React.FC<TreesPageProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <button
+            id="load_prestored_trees_btn"
+            onClick={() => handleLoadPrestoredDatabase(false)}
+            disabled={seeding}
+            title="Load curated 44-individual family trees with multi-branch lineages"
+            className="inline-flex items-center gap-2 bg-[#101724] hover:bg-[#182335] text-[#F5DE98] border border-[#C5A059]/50 hover:border-[#C5A059] px-3.5 py-2.5 rounded-sm text-xs font-display font-bold uppercase tracking-wider transition-all shadow-sm disabled:opacity-50"
+          >
+            {seeding ? (
+              <div className="w-3.5 h-3.5 border-2 border-[#C5A059] border-t-transparent animate-spin rounded-full" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5 text-[#C5A059]" />
+            )}
+            <span>{seeding ? 'Loading Archive...' : 'Load Pre-stored Archive'}</span>
+          </button>
+
           <button
             id="charter_new_tree_btn"
             onClick={() => setShowCreateModal(true)}

@@ -21,8 +21,20 @@ import { addPersonMedia } from '../src/db/media.ts';
 import { scanAllDuplicateCandidates } from '../src/db/duplicateDetection.ts';
 import { sql, eq } from 'drizzle-orm';
 
-async function seedCuratedDemoData() {
+export async function seedCuratedDemoData(
+  cleanExisting: boolean = true,
+  targetUserUid?: string,
+  targetUserEmail?: string
+) {
   console.log('--- Starting Curated Demo Dataset Population ---');
+
+  if (!cleanExisting) {
+    const existing = await db.select({ count: sql<number>`count(*)::int` }).from(person);
+    if ((existing[0]?.count ?? 0) > 0) {
+      console.log(`[Database] Pre-stored database already contains ${existing[0].count} people. Skipping seed.`);
+      return { seeded: false, count: existing[0].count };
+    }
+  }
 
   // 1. Clean existing database tables cleanly
   console.log('Cleaning existing tables...');
@@ -77,6 +89,10 @@ async function seedCuratedDemoData() {
   );
   // Grant editor / owner membership to current user on Tree 1
   await setTreeMemberRole(tree1.treeId, 'user-alice-pemberton', 'anuragsinghsisodiya21', 'anuragsinghsisodiya21@gmail.com', 'owner');
+  if (targetUserUid && targetUserUid !== 'anuragsinghsisodiya21') {
+    await getOrCreateUser(targetUserUid, targetUserEmail || `${targetUserUid}@example.com`, targetUserEmail?.split('@')[0] || 'Genealogist', null);
+    await setTreeMemberRole(tree1.treeId, 'user-alice-pemberton', targetUserUid, targetUserEmail || '', 'owner');
+  }
 
   const tree2 = await createTree(
     'Montgomery Family Tree',
@@ -85,6 +101,9 @@ async function seedCuratedDemoData() {
     true // discoverable
   );
   await setTreeMemberRole(tree2.treeId, 'user-david-montgomery', 'anuragsinghsisodiya21', 'anuragsinghsisodiya21@gmail.com', 'editor');
+  if (targetUserUid && targetUserUid !== 'anuragsinghsisodiya21') {
+    await setTreeMemberRole(tree2.treeId, 'user-david-montgomery', targetUserUid, targetUserEmail || '', 'editor');
+  }
 
   const tree3 = await createTree(
     'Research & Unlinked Records',
@@ -93,6 +112,9 @@ async function seedCuratedDemoData() {
     false
   );
   await setTreeMemberRole(tree3.treeId, 'user-alice-pemberton', 'anuragsinghsisodiya21', 'anuragsinghsisodiya21@gmail.com', 'editor');
+  if (targetUserUid && targetUserUid !== 'anuragsinghsisodiya21') {
+    await setTreeMemberRole(tree3.treeId, 'user-alice-pemberton', targetUserUid, targetUserEmail || '', 'editor');
+  }
 
   console.log('Trees created:', { tree1: tree1.treeId, tree2: tree2.treeId, tree3: tree3.treeId });
 
@@ -2012,14 +2034,24 @@ async function seedCuratedDemoData() {
   console.log('\n======================================================');
   console.log('  CURATED DEMO DATASET POPULATION COMPLETED!');
   console.log('======================================================');
+
+  return {
+    seeded: true,
+    totalPeople: Object.keys(P).length,
+    trees: [tree1.treeId, tree2.treeId, tree3.treeId],
+  };
 }
 
-seedCuratedDemoData()
-  .then(() => {
-    console.log('Seed completed cleanly.');
-    process.exit(0);
-  })
-  .catch((err) => {
-    console.error('Fatal seed error:', err);
-    process.exit(1);
-  });
+// Only auto-run if executed directly as the script (not when imported)
+const isMain = process.argv[1]?.includes('seedDemoData');
+if (isMain) {
+  seedCuratedDemoData(true)
+    .then(() => {
+      console.log('Seed completed cleanly.');
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error('Fatal seed error:', err);
+      process.exit(1);
+    });
+}

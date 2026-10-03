@@ -10,6 +10,7 @@ import {
   ArrowRight,
   ShieldCheck,
   UserCheck,
+  Sparkles,
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -30,6 +31,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveView }) => {
     pendingDuplicates: 0,
   });
   const [loadingStats, setLoadingStats] = useState(true);
+  const [seeding, setSeeding] = useState(false);
+
+  const handleLoadPrestoredDatabase = async () => {
+    try {
+      setSeeding(true);
+      const res = await fetch('/api/demo/seed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cleanExisting: false }),
+      });
+      if (res.ok) {
+        window.location.reload();
+      }
+    } catch (e) {
+      console.error('Failed to load archive:', e);
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -83,6 +103,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveView }) => {
             <p className="text-base sm:text-lg text-[#E8DFD0]/90 leading-relaxed font-reading max-w-2xl">
               A modern genealogical platform built to document your ancestry with confidence. Organize family lines, connect relatives, cite supporting records, and resolve duplicate people with privacy controls.
             </p>
+
+            {/* Empty database prompt */}
+            {!loadingStats && stats.peopleCount === 0 && (
+              <div className="p-4 bg-[#121924] border border-[#C5A059]/60 text-xs text-[#F5DE98] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg deco-corner-accent mt-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 border border-[#C5A059] bg-[#07090D] flex items-center justify-center text-[#F5DE98] shrink-0 rotate-45">
+                    <Sparkles className="w-4 h-4 -rotate-45 text-[#C5A059]" />
+                  </div>
+                  <div>
+                    <strong className="font-deco text-sm text-[#F5DE98] block">Pre-stored Database Available (44 Records)</strong>
+                    <span className="text-[#C5BBAE] font-reading">The database currently has no records. Click to load the curated multi-generational family archive.</span>
+                  </div>
+                </div>
+                <button
+                  id="hero-load-archive-btn"
+                  onClick={handleLoadPrestoredDatabase}
+                  disabled={seeding}
+                  className="px-4 py-2 bg-gradient-to-r from-[#C5A059] to-[#E3C37A] hover:from-[#D4AF67] hover:to-[#F5DE98] text-[#07090D] font-deco font-bold text-xs tracking-wider uppercase transition-all shrink-0 disabled:opacity-50 shadow-md"
+                >
+                  {seeding ? 'LOADING ARCHIVE...' : 'LOAD PRE-STORED ARCHIVE'}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Primary Actions */}

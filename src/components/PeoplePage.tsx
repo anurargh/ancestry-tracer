@@ -60,6 +60,32 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
   const [createModalOpen, setCreateModalOpen] = useState<boolean>(false);
   const [calcModalOpen, setCalcModalOpen] = useState<boolean>(false);
   const [calcInitialA, setCalcInitialA] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState<boolean>(false);
+
+  const handleLoadPrestoredDatabase = async (cleanExisting = false) => {
+    try {
+      setSeeding(true);
+      setError(null);
+      const token = await getIdToken();
+      const res = await fetch('/api/demo/seed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ cleanExisting }),
+      });
+      if (!res.ok) {
+        throw new Error('Failed to load pre-stored dataset');
+      }
+      await fetchPeopleAndTrees(false);
+    } catch (err: any) {
+      console.error('Error loading pre-stored database:', err);
+      setError(err.message || 'Failed to load pre-stored database');
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   const fetchPeopleAndTrees = async (showLoading = true) => {
     try {
@@ -216,6 +242,21 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
 
         <div className="flex flex-wrap items-center gap-3">
           <button
+            id="load-demo-data-btn"
+            onClick={() => handleLoadPrestoredDatabase(false)}
+            disabled={seeding}
+            title="Load curated 44-individual family tree with cross-tree lineages and duplicate pairs"
+            className="inline-flex items-center gap-2 bg-[#101724] hover:bg-[#182335] text-[#F5DE98] border border-[#C5A059]/50 hover:border-[#C5A059] px-3.5 py-2.5 text-xs font-deco font-semibold tracking-wider transition-colors shadow-sm disabled:opacity-50"
+          >
+            {seeding ? (
+              <div className="w-3.5 h-3.5 border-2 border-[#C5A059] border-t-transparent animate-spin rounded-full" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5 text-[#C5A059]" />
+            )}
+            <span>{seeding ? 'LOADING ARCHIVE...' : 'LOAD PRE-STORED ARCHIVE'}</span>
+          </button>
+
+          <button
             id="open-kinship-calc-btn"
             onClick={() => {
               setCalcInitialA(null);
@@ -358,6 +399,47 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
       ) : error ? (
         <div className="p-5 border border-[#5E1D31] bg-[#240B13] text-[#F5DE98] text-xs font-mono">
           {error}
+        </div>
+      ) : people.length === 0 ? (
+        <div className="py-16 text-center border-2 border-[#C5A059]/40 p-8 bg-[#0B0F17] space-y-4 shadow-[0_0_40px_rgba(197,160,89,0.1)] deco-corner-accent">
+          <div className="w-12 h-12 border border-[#C5A059] bg-[#121924] flex items-center justify-center text-[#F5DE98] mx-auto rotate-45 shadow-sm mb-2">
+            <Sparkles className="w-6 h-6 -rotate-45 text-[#C5A059]" />
+          </div>
+          <h3 className="text-xl font-deco font-bold text-[#F5DE98]">
+            Pre-stored Genealogical Database Available
+          </h3>
+          <p className="text-xs text-[#C5BBAE] max-w-lg mx-auto font-reading leading-relaxed">
+            The database currently has no records. You can load the pre-stored archival dataset containing <strong className="text-white">44 documented individuals</strong> across 4 generations, complete with multi-tree lineages, vital certificates, census records, and duplicate detection candidates.
+          </p>
+
+          <div className="flex items-center justify-center gap-3 pt-3 flex-wrap">
+            <button
+              id="empty-load-archive-btn"
+              onClick={() => handleLoadPrestoredDatabase(false)}
+              disabled={seeding}
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-[#C5A059] to-[#E3C37A] hover:from-[#D4AF67] hover:to-[#F5DE98] text-[#07090D] font-deco font-bold px-6 py-2.5 text-xs transition-all shadow-md disabled:opacity-50 tracking-wider uppercase"
+            >
+              {seeding ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-[#07090D] border-t-transparent animate-spin rounded-full" />
+                  <span>LOADING PRE-STORED ARCHIVE...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-[#07090D]" />
+                  <span>LOAD PRE-STORED DATABASE (44 RECORDS)</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => setCreateModalOpen(true)}
+              className="inline-flex items-center gap-2 border border-[#C5A059]/50 hover:border-[#C5A059] text-[#EDE7DF] hover:bg-[#141B26] font-deco font-semibold px-4 py-2.5 text-xs transition-all tracking-wider uppercase"
+            >
+              <Plus className="w-4 h-4 text-[#C5A059]" />
+              <span>START EMPTY (ADD PERSON)</span>
+            </button>
+          </div>
         </div>
       ) : filteredPeople.length === 0 ? (
         <div className="py-20 text-center border border-[#222B38] p-10 bg-[#0A0E15] space-y-4 deco-corner-accent">

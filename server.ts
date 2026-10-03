@@ -55,6 +55,7 @@ import {
 import { MatchBand, MatchStatus } from './src/types.ts';
 import { createPool } from './src/db/index.ts';
 import { initDatabaseSchema } from './src/db/initSchema.ts';
+import { seedCuratedDemoData } from './scripts/seedDemoData.ts';
 
 async function startServer() {
   const app = express();
@@ -64,6 +65,26 @@ async function startServer() {
   try {
     const pool = createPool();
     await initDatabaseSchema(pool);
+
+    // Auto-seed curated demo dataset if database is fresh and has 0 people
+    try {
+      const client = await pool.connect();
+      try {
+        const personCountRes = await client.query('SELECT count(*)::int as count FROM "person";');
+        const count = personCountRes.rows[0]?.count ?? 0;
+        if (count === 0) {
+          console.log('[Database] Database has 0 records. Auto-seeding curated genealogical demo dataset...');
+          await seedCuratedDemoData(false);
+          console.log('[Database] Curated dataset successfully auto-seeded on startup.');
+        } else {
+          console.log(`[Database] Pre-stored database active with ${count} individuals.`);
+        }
+      } finally {
+        client.release();
+      }
+    } catch (seedErr: any) {
+      console.warn('[Database] Auto-seed note (non-fatal):', seedErr?.message || seedErr);
+    }
   } catch (dbInitErr: any) {
     console.error('Failed to auto-initialize database schema on startup:', dbInitErr?.message || dbInitErr);
   }
@@ -79,6 +100,34 @@ async function startServer() {
       database: 'Cloud SQL PostgreSQL',
       timestamp: new Date().toISOString(),
     });
+  });
+
+  // Explicitly seed or reset the curated demo dataset
+  app.post('/api/demo/seed', async (req, res) => {
+    try {
+      let targetUid: string | undefined = undefined;
+      let targetEmail: string | undefined = undefined;
+
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split('Bearer ')[1]?.trim();
+        if (token && token.startsWith('user-')) {
+          targetUid = token;
+          targetEmail = `${token.replace('user-', '')}@example.com`;
+        }
+      }
+
+      const cleanExisting = req.body?.cleanExisting === true;
+      const result = await seedCuratedDemoData(cleanExisting, targetUid, targetEmail);
+      res.json({
+        success: true,
+        message: 'Curated genealogical dataset populated successfully',
+        result,
+      });
+    } catch (error: any) {
+      console.error('Failed to seed demo data via API:', error);
+      res.status(500).json({ error: error.message || 'Failed to seed demo data' });
+    }
   });
 
   // Sync / Register authenticated user to Cloud SQL
