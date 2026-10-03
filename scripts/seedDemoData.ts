@@ -19,7 +19,7 @@ import { createPersonWithClaims, addClaimToPerson } from '../src/db/people.ts';
 import { addParentChildRelationship, addPartnership, rebuildAllAncestorClosures } from '../src/db/relationships.ts';
 import { addPersonMedia } from '../src/db/media.ts';
 import { scanAllDuplicateCandidates } from '../src/db/duplicateDetection.ts';
-import { sql, eq } from 'drizzle-orm';
+import { sql, eq, and, or, inArray } from 'drizzle-orm';
 
 export async function seedCuratedDemoData(
   cleanExisting: boolean = true,
@@ -30,9 +30,50 @@ export async function seedCuratedDemoData(
 
   if (!cleanExisting) {
     const existing = await db.select({ count: sql<number>`count(*)::int` }).from(person);
-    if ((existing[0]?.count ?? 0) > 0) {
-      console.log(`[Database] Pre-stored database already contains ${existing[0].count} people. Skipping seed.`);
-      return { seeded: false, count: existing[0].count };
+    const existingCount = existing[0]?.count ?? 0;
+    if (existingCount >= 30) {
+      console.log(`[Database] Pre-stored database already contains ${existingCount} people.`);
+
+      // Ensure target user is added as member/owner to the curated trees
+      if (targetUserUid) {
+        console.log(`[Database] Connecting user ${targetUserUid} to curated pre-stored trees...`);
+        const curatedTrees = await db
+          .select({ treeId: tree.treeId, name: tree.name, ownerUid: tree.ownerUid })
+          .from(tree)
+          .where(
+            or(
+              inArray(tree.ownerUid, ['user-alice-pemberton', 'user-david-montgomery']),
+              inArray(tree.name, ['Pemberton Heritage Tree', 'Montgomery Family Tree', 'Research & Unlinked Records'])
+            )
+          );
+
+        for (const t of curatedTrees) {
+          try {
+            const existingMember = await db
+              .select()
+              .from(treeMember)
+              .where(and(eq(treeMember.treeId, t.treeId), eq(treeMember.userUid, targetUserUid)))
+              .limit(1);
+
+            if (existingMember.length === 0) {
+              await db.insert(treeMember).values({
+                treeId: t.treeId,
+                userUid: targetUserUid,
+                userEmail: targetUserEmail || null,
+                role: 'owner',
+              });
+            }
+          } catch (mErr) {
+            console.warn(`Could not add tree membership for ${targetUserUid} on ${t.name}:`, mErr);
+          }
+        }
+      }
+
+      return {
+        seeded: true,
+        count: existingCount,
+        message: `Successfully connected to pre-stored archive with ${existingCount} individuals across curated trees.`,
+      };
     }
   }
 

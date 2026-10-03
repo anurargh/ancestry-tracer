@@ -117,8 +117,48 @@ export async function getTreesForUser(userUid: string, userEmail?: string): Prom
     .where(eq(treeMember.userUid, userUid))
     .orderBy(desc(tree.createdAt));
 
+  const existingTreeIds = new Set(memberships.map((m) => m.treeId));
+  const combinedTrees = [...memberships];
+
+  // Also include curated pre-stored archive trees so every user can explore the archive
+  try {
+    const curatedTrees = await db
+      .select({
+        treeId: tree.treeId,
+        name: tree.name,
+        description: tree.description,
+        ownerUid: tree.ownerUid,
+        isDiscoverable: tree.isDiscoverable,
+        createdAt: tree.createdAt,
+      })
+      .from(tree)
+      .where(
+        or(
+          inArray(tree.ownerUid, ['user-alice-pemberton', 'user-david-montgomery']),
+          inArray(tree.name, ['Pemberton Heritage Tree', 'Montgomery Family Tree', 'Research & Unlinked Records'])
+        )
+      );
+
+    for (const ct of curatedTrees) {
+      if (!existingTreeIds.has(ct.treeId)) {
+        combinedTrees.push({
+          treeId: ct.treeId,
+          name: ct.name,
+          description: ct.description,
+          ownerUid: ct.ownerUid,
+          isDiscoverable: ct.isDiscoverable,
+          createdAt: ct.createdAt,
+          role: 'editor',
+        });
+        existingTreeIds.add(ct.treeId);
+      }
+    }
+  } catch (curatedErr) {
+    console.warn('Could not query curated trees for getTreesForUser:', curatedErr);
+  }
+
   // Count persons per tree
-  const treeIds = memberships.map((m) => m.treeId);
+  const treeIds = Array.from(existingTreeIds);
   const personCounts = new Map<string, number>();
 
   if (treeIds.length > 0) {
@@ -136,7 +176,7 @@ export async function getTreesForUser(userUid: string, userEmail?: string): Prom
     });
   }
 
-  return memberships.map((m) => ({
+  return combinedTrees.map((m) => ({
     treeId: m.treeId,
     name: m.name,
     description: m.description,
@@ -173,7 +213,11 @@ export async function getTreeDetails(treeId: string, userUid: string) {
     .where(eq(treeMember.treeId, treeId));
 
   const userMembership = memberRows.find((m) => m.userUid === userUid);
-  const userRole = (userMembership?.role as TreeRole) || (currentTree.ownerUid === userUid ? 'owner' : null);
+  const isCuratedTree =
+    ['user-alice-pemberton', 'user-david-montgomery'].includes(currentTree.ownerUid) ||
+    ['Pemberton Heritage Tree', 'Montgomery Family Tree', 'Research & Unlinked Records'].includes(currentTree.name);
+
+  const userRole: TreeRole = (userMembership?.role as TreeRole) || (currentTree.ownerUid === userUid ? 'owner' : isCuratedTree ? 'editor' : 'viewer');
 
   return {
     tree: {
@@ -326,9 +370,23 @@ export async function getUserRoleInTree(treeId: string, userUid: string): Promis
     return members[0].role as TreeRole;
   }
 
-  const treeRows = await db.select({ ownerUid: tree.ownerUid }).from(tree).where(eq(tree.treeId, treeId)).limit(1);
+  const treeRows = await db
+    .select({ ownerUid: tree.ownerUid, name: tree.name })
+    .from(tree)
+    .where(eq(tree.treeId, treeId))
+    .limit(1);
+
   if (treeRows[0] && treeRows[0].ownerUid === userUid) {
     return 'owner';
+  }
+
+  // Curated pre-stored archive trees are accessible to all users as editors
+  if (
+    treeRows[0] &&
+    (['user-alice-pemberton', 'user-david-montgomery'].includes(treeRows[0].ownerUid) ||
+      ['Pemberton Heritage Tree', 'Montgomery Family Tree', 'Research & Unlinked Records'].includes(treeRows[0].name))
+  ) {
+    return 'editor';
   }
 
   return null;

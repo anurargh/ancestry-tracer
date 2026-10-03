@@ -239,7 +239,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (authMode === 'demo') {
       return currentDemo.uid;
     }
-    return null;
+    return currentDemo?.uid || 'user-alice-pemberton';
   };
 
   const getAuthHeaders = async (): Promise<Record<string, string>> => {

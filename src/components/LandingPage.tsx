@@ -18,7 +18,7 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ setActiveView }) => {
-  const { user, isRealUser, openAuthModal, activePersona, demoPersonas, switchDemoPersona } = useAuth();
+  const { user, isRealUser, openAuthModal, activePersona, demoPersonas, switchDemoPersona, getIdToken } = useAuth();
   const [stats, setStats] = useState<{
     peopleCount: number;
     claimsCount: number;
@@ -32,17 +32,53 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveView }) => {
   });
   const [loadingStats, setLoadingStats] = useState(true);
   const [seeding, setSeeding] = useState(false);
+  const [seedNotice, setSeedNotice] = useState<string | null>(null);
 
-  const handleLoadPrestoredDatabase = async () => {
+  const fetchStats = async () => {
     try {
-      setSeeding(true);
-      const res = await fetch('/api/demo/seed', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cleanExisting: false }),
+      const token = await getIdToken();
+      const res = await fetch('/api/audit-logs?limit=1', {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       });
       if (res.ok) {
-        window.location.reload();
+        const data = await res.json();
+        if (data.stats) {
+          setStats({
+            peopleCount: Number(data.stats.totalPeople ?? data.stats.person ?? 0),
+            claimsCount: Number(data.stats.totalClaims ?? data.stats.person_claim ?? 0),
+            relationshipsCount: Number(data.stats.totalRelationships ?? 0),
+            pendingDuplicates: Number(data.stats.pendingDuplicates ?? data.stats.match_candidate ?? 0),
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load system stats:', err);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  const handleLoadPrestoredDatabase = async (cleanExisting = false) => {
+    try {
+      setSeeding(true);
+      setSeedNotice(null);
+      const token = await getIdToken();
+      const res = await fetch('/api/demo/seed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          cleanExisting,
+          targetUid: user?.uid,
+          targetEmail: user?.email,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSeedNotice(data.message || 'Pre-stored archive connected successfully!');
+        await fetchStats();
       }
     } catch (e) {
       console.error('Failed to load archive:', e);
@@ -52,29 +88,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveView }) => {
   };
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const token = localStorage.getItem('familygraph_token') || 'demo_token';
-        const res = await fetch('/api/audit-logs?limit=1', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.stats) {
-            setStats({
-              peopleCount: data.stats.totalPeople || 0,
-              claimsCount: data.stats.totalClaims || 0,
-              relationshipsCount: data.stats.totalRelationships || 0,
-              pendingDuplicates: data.stats.pendingDuplicates || 0,
-            });
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load system stats:', err);
-      } finally {
-        setLoadingStats(false);
-      }
-    };
     fetchStats();
   }, [user]);
 
@@ -104,8 +117,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveView }) => {
               A modern genealogical platform built to document your ancestry with confidence. Organize family lines, connect relatives, cite supporting records, and resolve duplicate people with privacy controls.
             </p>
 
-            {/* Empty database prompt */}
-            {!loadingStats && stats.peopleCount === 0 && (
+            {/* Success notification banner */}
+            {seedNotice && (
+              <div className="p-3 bg-[#0A1A12] border border-[#34D399]/60 text-xs text-[#A7F3D0] flex items-center justify-between gap-3 shadow-md">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[#34D399] shrink-0" />
+                  <span>{seedNotice}</span>
+                </div>
+                <button
+                  onClick={() => setActiveView('people')}
+                  className="px-3 py-1 bg-[#34D399] hover:bg-[#10B981] text-[#07090D] font-deco font-bold text-[10px] tracking-wider uppercase"
+                >
+                  VIEW PEOPLE
+                </button>
+              </div>
+            )}
+
+            {/* Database Status Prompt */}
+            {!loadingStats && stats.peopleCount === 0 ? (
               <div className="p-4 bg-[#121924] border border-[#C5A059]/60 text-xs text-[#F5DE98] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg deco-corner-accent mt-4">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 border border-[#C5A059] bg-[#07090D] flex items-center justify-center text-[#F5DE98] shrink-0 rotate-45">
@@ -113,19 +142,45 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveView }) => {
                   </div>
                   <div>
                     <strong className="font-deco text-sm text-[#F5DE98] block">Pre-stored Database Available (44 Records)</strong>
-                    <span className="text-[#C5BBAE] font-reading">The database currently has no records. Click to load the curated multi-generational family archive.</span>
+                    <span className="text-[#C5BBAE] font-reading">Click to load the curated multi-generational family archive into your workspace.</span>
                   </div>
                 </div>
                 <button
                   id="hero-load-archive-btn"
-                  onClick={handleLoadPrestoredDatabase}
+                  onClick={() => handleLoadPrestoredDatabase(false)}
                   disabled={seeding}
                   className="px-4 py-2 bg-gradient-to-r from-[#C5A059] to-[#E3C37A] hover:from-[#D4AF67] hover:to-[#F5DE98] text-[#07090D] font-deco font-bold text-xs tracking-wider uppercase transition-all shrink-0 disabled:opacity-50 shadow-md"
                 >
                   {seeding ? 'LOADING ARCHIVE...' : 'LOAD PRE-STORED ARCHIVE'}
                 </button>
               </div>
-            )}
+            ) : !loadingStats && stats.peopleCount > 0 ? (
+              <div className="p-3 bg-[#0E1520]/80 border border-[#C5A059]/40 text-xs text-[#F5DE98] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-inner mt-4">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2 h-2 rounded-full bg-[#34D399] animate-pulse shrink-0" />
+                  <span className="font-reading text-[#E8DFD0]">
+                    <strong className="text-[#F5DE98] font-deco mr-1.5">Pre-stored Archive Active:</strong>
+                    {stats.peopleCount} individuals documented across 3 curated family trees.
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setActiveView('people')}
+                    className="px-3 py-1.5 bg-[#C5A059]/20 hover:bg-[#C5A059]/30 text-[#F5DE98] border border-[#C5A059]/50 text-[10px] font-deco font-bold uppercase tracking-wider transition-colors"
+                  >
+                    Explore Directory
+                  </button>
+                  <button
+                    onClick={() => handleLoadPrestoredDatabase(true)}
+                    disabled={seeding}
+                    title="Reset archive to default pristine state"
+                    className="px-2.5 py-1.5 text-[#A89F91] hover:text-[#EDE7DF] text-[10px] font-deco uppercase tracking-wider transition-colors disabled:opacity-50"
+                  >
+                    {seeding ? 'Reloading...' : 'Reset Archive'}
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {/* Primary Actions */}

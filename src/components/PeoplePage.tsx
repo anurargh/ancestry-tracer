@@ -61,11 +61,13 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
   const [calcModalOpen, setCalcModalOpen] = useState<boolean>(false);
   const [calcInitialA, setCalcInitialA] = useState<string | null>(null);
   const [seeding, setSeeding] = useState<boolean>(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const handleLoadPrestoredDatabase = async (cleanExisting = false) => {
     try {
       setSeeding(true);
       setError(null);
+      setSuccessMsg(null);
       const token = await getIdToken();
       const res = await fetch('/api/demo/seed', {
         method: 'POST',
@@ -73,11 +75,18 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ cleanExisting }),
+        body: JSON.stringify({
+          cleanExisting,
+          targetUid: user?.uid,
+          targetEmail: user?.email,
+        }),
       });
       if (!res.ok) {
-        throw new Error('Failed to load pre-stored dataset');
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Failed to load pre-stored dataset');
       }
+      const data = await res.json();
+      setSuccessMsg(data.message || 'Pre-stored archive (44 individuals) connected successfully!');
       await fetchPeopleAndTrees(false);
     } catch (err: any) {
       console.error('Error loading pre-stored database:', err);
@@ -224,6 +233,22 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 w-full max-w-full overflow-hidden">
+      {/* Success Notification Banner */}
+      {successMsg && (
+        <div className="p-3.5 bg-[#0A1A12] border border-[#34D399]/60 text-xs text-[#A7F3D0] flex items-center justify-between gap-3 shadow-md">
+          <div className="flex items-center gap-2.5">
+            <Sparkles className="w-4 h-4 text-[#34D399] shrink-0" />
+            <span>{successMsg}</span>
+          </div>
+          <button
+            onClick={() => setSuccessMsg(null)}
+            className="text-[#A7F3D0] hover:text-white text-xs px-2 py-0.5"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 border-b border-[#C5A059]/30 pb-7">
         <div className="space-y-1.5">
@@ -243,9 +268,9 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
         <div className="flex flex-wrap items-center gap-3">
           <button
             id="load-demo-data-btn"
-            onClick={() => handleLoadPrestoredDatabase(false)}
+            onClick={() => handleLoadPrestoredDatabase(people.length > 0)}
             disabled={seeding}
-            title="Load curated 44-individual family tree with cross-tree lineages and duplicate pairs"
+            title="Load or refresh curated 44-individual family tree with cross-tree lineages and duplicate pairs"
             className="inline-flex items-center gap-2 bg-[#101724] hover:bg-[#182335] text-[#F5DE98] border border-[#C5A059]/50 hover:border-[#C5A059] px-3.5 py-2.5 text-xs font-deco font-semibold tracking-wider transition-colors shadow-sm disabled:opacity-50"
           >
             {seeding ? (
@@ -253,7 +278,7 @@ export const PeoplePage: React.FC<PeoplePageProps> = ({
             ) : (
               <Sparkles className="w-3.5 h-3.5 text-[#C5A059]" />
             )}
-            <span>{seeding ? 'LOADING ARCHIVE...' : 'LOAD PRE-STORED ARCHIVE'}</span>
+            <span>{seeding ? 'CONNECTING ARCHIVE...' : people.length > 0 ? 'RELOAD ARCHIVE' : 'LOAD PRE-STORED ARCHIVE'}</span>
           </button>
 
           <button

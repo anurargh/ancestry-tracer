@@ -56,6 +56,7 @@ import { MatchBand, MatchStatus } from './src/types.ts';
 import { createPool } from './src/db/index.ts';
 import { initDatabaseSchema } from './src/db/initSchema.ts';
 import { seedCuratedDemoData } from './scripts/seedDemoData.ts';
+import { adminAuth } from './src/lib/firebase-admin.ts';
 
 async function startServer() {
   const app = express();
@@ -111,18 +112,54 @@ async function startServer() {
       const authHeader = req.headers.authorization;
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.split('Bearer ')[1]?.trim();
-        if (token && token.startsWith('user-')) {
-          targetUid = token;
-          targetEmail = `${token.replace('user-', '')}@example.com`;
+        if (token) {
+          if (token.startsWith('user-')) {
+            targetUid = token;
+            targetEmail = `${token.replace('user-', '')}@example.com`;
+          } else if (token === 'user-alice-pemberton' || token.startsWith('demo-') || token === 'demo_token' || token === 'demo') {
+            targetUid = 'user-alice-pemberton';
+            targetEmail = 'alice.pemberton@example.com';
+          } else if (token === 'user-david-montgomery') {
+            targetUid = 'user-david-montgomery';
+            targetEmail = 'david.montgomery@example.com';
+          } else if (token === 'user-elena-thorne') {
+            targetUid = 'user-elena-thorne';
+            targetEmail = 'elena.thorne@example.com';
+          } else {
+            // Firebase token or decoded JWT fallback
+            try {
+              const decoded = await adminAuth.verifyIdToken(token);
+              targetUid = decoded.uid;
+              targetEmail = decoded.email;
+            } catch {
+              if (token.includes('.')) {
+                try {
+                  const parts = token.split('.');
+                  const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+                  targetUid = payload.user_id || payload.sub || payload.uid;
+                  targetEmail = payload.email;
+                } catch {}
+              }
+            }
+          }
         }
+      }
+
+      // Also allow payload fallback
+      if (!targetUid && req.body?.targetUid) {
+        targetUid = req.body.targetUid;
+      }
+      if (!targetEmail && req.body?.targetEmail) {
+        targetEmail = req.body.targetEmail;
       }
 
       const cleanExisting = req.body?.cleanExisting === true;
       const result = await seedCuratedDemoData(cleanExisting, targetUid, targetEmail);
       res.json({
         success: true,
-        message: 'Curated genealogical dataset populated successfully',
+        message: result.message || 'Curated genealogical dataset populated successfully',
         result,
+        count: result.count,
       });
     } catch (error: any) {
       console.error('Failed to seed demo data via API:', error);

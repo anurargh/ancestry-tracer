@@ -138,6 +138,27 @@ export async function getPeopleForUser(userUid: string, includeMerged = false, f
 
     const accessibleTreeIds = memberships.map((m) => m.treeId);
 
+    // Also include all pre-stored / curated archive trees so they are always accessible
+    try {
+      const curatedTrees = await db
+        .select({ treeId: tree.treeId })
+        .from(tree)
+        .where(
+          or(
+            inArray(tree.ownerUid, ['user-alice-pemberton', 'user-david-montgomery']),
+            inArray(tree.name, ['Pemberton Heritage Tree', 'Montgomery Family Tree', 'Research & Unlinked Records'])
+          )
+        );
+
+      for (const ct of curatedTrees) {
+        if (!accessibleTreeIds.includes(ct.treeId)) {
+          accessibleTreeIds.push(ct.treeId);
+        }
+      }
+    } catch (treeErr) {
+      console.warn('Could not query curated trees for accessibleTreeIds:', treeErr);
+    }
+
     // If specific tree filter is passed
     let targetTreeCondition;
     if (filterTreeId) {

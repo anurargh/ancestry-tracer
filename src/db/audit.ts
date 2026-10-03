@@ -146,6 +146,31 @@ export async function getAuditLogs(filter: GetAuditLogsFilter = {}) {
       stats[s.entityType] = s.count;
     }
 
+    // Include system-wide entity counts for landing dashboard
+    try {
+      const [pCount, cCount, pcCount, psCount, mCount] = await Promise.all([
+        db.execute(sql`SELECT count(*)::int as count FROM "person" WHERE "merged_into" IS NULL`),
+        db.execute(sql`SELECT count(*)::int as count FROM "person_claim" WHERE "status" = 'active'`),
+        db.execute(sql`SELECT count(*)::int as count FROM "parent_child"`),
+        db.execute(sql`SELECT count(*)::int as count FROM "partnership"`),
+        db.execute(sql`SELECT count(*)::int as count FROM "match_candidate" WHERE "status" = 'pending'`),
+      ]);
+
+      const totalPeople = (pCount.rows[0] as any)?.count ?? stats['person'] ?? 0;
+      const totalClaims = (cCount.rows[0] as any)?.count ?? stats['person_claim'] ?? 0;
+      const parentChildRel = (pcCount.rows[0] as any)?.count ?? 0;
+      const partnershipRel = (psCount.rows[0] as any)?.count ?? 0;
+      const pendingDuplicates = (mCount.rows[0] as any)?.count ?? stats['match_candidate'] ?? 0;
+
+      stats.totalPeople = Number(totalPeople);
+      stats.totalClaims = Number(totalClaims);
+      stats.totalRelationships = Number(parentChildRel) + Number(partnershipRel);
+      stats.pendingDuplicates = Number(pendingDuplicates);
+      stats.people = Number(totalPeople);
+    } catch (countErr) {
+      console.warn('Could not fetch exact system counts for audit stats:', countErr);
+    }
+
     const logs: AuditLogRecord[] = rows.map((r) => {
       const changedAtIso = r.changedAt ? r.changedAt.toISOString() : new Date().toISOString();
       return {

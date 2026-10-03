@@ -83,13 +83,19 @@ export const TreesPage: React.FC<TreesPageProps> = ({
           'Content-Type': 'application/json',
           ...headers,
         },
-        body: JSON.stringify({ cleanExisting }),
+        body: JSON.stringify({
+          cleanExisting,
+          targetUid: user?.uid,
+          targetEmail: user?.email,
+        }),
       });
       if (!res.ok) {
-        throw new Error('Failed to load pre-stored dataset');
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to load pre-stored dataset');
       }
+      const data = await res.json();
       await fetchTreesAndConsent();
-      setMessage({ type: 'success', text: 'Pre-stored genealogical dataset (44 individuals across 3 family trees) loaded successfully!' });
+      setMessage({ type: 'success', text: data.message || 'Pre-stored genealogical dataset (44 individuals across 3 family trees) connected successfully!' });
     } catch (err: any) {
       console.error('Error loading pre-stored database:', err);
       setMessage({ type: 'error', text: err.message || 'Failed to load pre-stored database' });
